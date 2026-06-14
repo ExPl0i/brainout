@@ -2,7 +2,19 @@ apply plugin: 'com.github.ben-manes.versions'
 apply plugin: "idea-utils"
 apply plugin: "com.jetbrains.python.envs"
 
+// The Android client is built only when an SDK is available. We mirror the
+// same guard here so the modern Android Gradle Plugin (and the google() repo
+// it needs) are only added to the buildscript classpath in that case — builds
+// without an Android SDK keep resolving exactly the dependencies they did before.
+ext.androidEnabled = System.getenv('ANDROID_HOME') != null ||
+        System.getenv('ANDROID_SDK_ROOT') != null ||
+        gradle.startParameter.projectProperties.containsKey('withAndroid')
+
 buildscript {
+    def androidEnabled = System.getenv('ANDROID_HOME') != null ||
+            System.getenv('ANDROID_SDK_ROOT') != null ||
+            gradle.startParameter.projectProperties.containsKey('withAndroid')
+
     repositories {
         mavenCentral()
         maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
@@ -10,10 +22,16 @@ buildscript {
         maven { url "https://jitpack.io" }
         maven { url "https://plugins.gradle.org/m2/" }
         maven { url "https://repo.cuba-platform.com/content/groups/work/" }
+        if (androidEnabled) {
+            google()
+        }
     }
     dependencies {
         classpath 'de.richsource.gradle.plugins:gwt-gradle-plugin:0.6'
-        classpath 'com.android.tools.build:gradle:1.0.0'
+        if (androidEnabled) {
+            // AGP 8.x requires JDK 17 and a configured Android SDK.
+            classpath 'com.android.tools.build:gradle:8.1.4'
+        }
         classpath 'org.robovm:robovm-gradle-plugin:1.9.0'
         classpath 'com.guardsquare:proguard-gradle:7.6.0'
         classpath 'com.github.ben-manes:gradle-versions-plugin:0.11.3'
@@ -44,6 +62,9 @@ allprojects {
         maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
         maven { url "https://oss.sonatype.org/content/repositories/releases/" }
         maven { url "https://jitpack.io" }
+        if (rootProject.ext.androidEnabled) {
+            google()
+        }
     }
 }
 

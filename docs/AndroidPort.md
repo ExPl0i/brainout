@@ -40,6 +40,25 @@ The Android module exists but is disabled and stale.
 | Data package signing | client verifies signatures; desktop uses `--unsafe` (no CLI on Android) | `AndroidEnvironment`, `Readme.md:49` |
 | Storage model | `WRITE_EXTERNAL_STORAGE` + `getExternalStorageDirectory()` broken on Android 10+ | `AndroidManifest.xml`, `AndroidEnvironment.java:82` |
 
+## Environment Constraints (verification status)
+
+The toolchain/wiring changes below were authored but **could not be built or
+verified** in the session where they were written, because that environment
+had:
+
+- **no Android SDK** (`ANDROID_HOME`/`ANDROID_SDK_ROOT` unset, no `sdkmanager`/`adb`)
+- **only JDK 21** (AGP 8 targets JDK 17; the rest of the project expects JDK 11)
+
+Consequently the Android module is wired to be **opt-in**: it is only configured
+when an Android SDK is present, or when `-PwithAndroid` is passed. Default
+desktop/server builds are unaffected. All Android changes must still be built
+and validated on a machine with JDK 17 + Android SDK (platform 34) before they
+can be trusted. Open known risks to confirm on first real build:
+
+- libGDX version conflict between the custom `com.github.desertkun.libgdx:gdx`
+  fork used by `:core` and the stock `gdx-backend-android:1.11.0`.
+- exact AGP 8 task wiring for `copyAndroidNatives` (jniLibs packaging).
+
 ## Target Versions
 
 - Android Gradle Plugin: **8.1.x** (wrapper is already Gradle 8.3)
@@ -55,17 +74,20 @@ The Android module exists but is disabled and stale.
 - [ ] Confirm target versions above with maintainers
 
 ### Phase 1 — Toolchain & module wiring
-- [ ] `settings.gradle`: add `'android'` to `include`
-- [ ] root `build.gradle`: uncomment `project(":android")` block (50–72)
-- [ ] root `build.gradle`: bump AGP classpath `1.0.0` → `8.1.x`
-- [ ] `android/build.gradle`: rewrite for AGP 8 (`namespace`, `compileSdk 34`,
+> Implemented (UNVERIFIED — no SDK/JDK17 in authoring env). The wiring is
+> guarded so it stays inert without an Android SDK.
+- [x] `settings.gradle`: include `'android'` conditionally (SDK present or `-PwithAndroid`)
+- [x] root `build.gradle`: gated `google()` repo + AGP classpath `8.1.4`
+      (only when SDK present); legacy `project(":android")` block left commented
+      — config now lives in `android/build.gradle`
+- [x] `android/build.gradle`: rewritten for AGP 8 (`namespace`, `compileSdk 34`,
       `defaultConfig{applicationId, minSdk 24, targetSdk 34, versionCode/Name}`,
-      `buildTypes`, `packagingOptions` for `.so`); drop Ant-era
-      `PackageApplication`/`copyAndroidNatives`
-- [ ] `AndroidManifest.xml`: drop legacy `package=` (use `namespace`), raise
-      `minSdkVersion`, add `android:exported="true"` to launcher activity
-- [ ] gdx-backend-android + natives incl. **arm64-v8a**
+      `buildTypes`, `packagingOptions` for `.so`, `copyAndroidNatives` task)
+- [x] `AndroidManifest.xml`: dropped legacy `package=`/`uses-sdk`, added
+      `android:exported="true"`, removed `WRITE_EXTERNAL_STORAGE`
+- [x] gdx-backend-android + natives incl. **arm64-v8a** and x86_64
 - [ ] Checkpoint: `./gradlew android:assembleDebug` reaches Java compilation
+      (requires JDK 17 + Android SDK — not possible in authoring env)
 
 ### Phase 2 — Fix compilation (API drift)
 - [ ] `AndroidGameController`: update to gdx 1.11 APIs
@@ -84,14 +106,14 @@ The Android module exists but is disabled and stale.
       use writable dirs
 
 ### Phase 4 — Server-address entry on Android
-- [ ] Deep-link: add `brainout://` `intent-filter`; in
-      `AndroidLauncher.onCreate()` read `getIntent().getData()` and set
-      `BrainOutClient.ConnectToLocation` before engine start
+> Decision (confirmed): support **both** deep-link and a UI field.
+- [x] Deep-link: `brainout://` `intent-filter` in manifest; `AndroidLauncher`
+      reads `getIntent().getData()` and sets `BrainOutClient.ConnectToLocation`
+      before engine start
 - [ ] UI "Direct Connect" menu (host + ports) that base64-encodes
       `host;tcp;udp;http` and calls the existing connect path
 - [ ] Expose `--offline` / `--unsafe` equivalents as environment flags in
       `AndroidEnvironment`/`AndroidSettings`
-- [ ] Decision point: deep-link only, UI only, or both (recommended: both)
 
 ### Phase 5 — Data packages & signing
 - [ ] Decide: embed public key + signed packages, OR enable an "unsafe" build

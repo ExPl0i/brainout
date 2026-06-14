@@ -1,46 +1,114 @@
+// Android client module — modernized for Android Gradle Plugin 8.x.
+//
+// This module is only configured when the Android SDK is present (see the
+// guard in settings.gradle). Building it requires:
+//   * JDK 17 (AGP 8 requirement)
+//   * Android SDK with platform 34 and build-tools installed
+//   * a local.properties with sdk.dir=... (or ANDROID_HOME exported)
+//
+// NOTE: this configuration has not yet been verified against a real Android
+// SDK build in this environment. See docs/AndroidPort.md.
+
+plugins {
+    id 'com.android.application'
+}
+
 android {
-    buildToolsVersion "21.1.2"
-    compileSdkVersion 22
+    namespace 'com.desertkun.brainout.android'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.desertkun.brainout.android'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+        }
+    }
+
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
             java.srcDirs = ['src']
-            aidl.srcDirs = ['src']
-            renderscript.srcDirs = ['src']
             res.srcDirs = ['res']
             assets.srcDirs = ['assets']
+            jniLibs.srcDirs = ['libs']
         }
+    }
 
-        instrumentTest.setRoot('tests')
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+        release {
+            // Reflection-heavy codebase: keep R8 off until proguard rules are
+            // validated (see docs/AndroidPort.md, Phase 9).
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-project.txt'
+        }
+    }
+
+    packagingOptions {
+        // libGDX ships plain .so natives; keep legacy packaging so they load.
+        jniLibs {
+            useLegacyPackaging true
+        }
     }
 }
 
-// needed to add JNI shared libraries to APK when compiling on CLI
-tasks.withType(com.android.build.gradle.tasks.PackageApplication) { pkgTask ->
-    pkgTask.jniFolders = new HashSet<File>()
-    pkgTask.jniFolders.add(new File(projectDir, 'libs'))
+configurations { natives }
+
+dependencies {
+    implementation project(':client')
+
+    implementation "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a"
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
+
+    implementation("com.badlogicgames.gdx:gdx-box2d:$gdxVersion") {
+        exclude group: 'com.badlogicgames.gdx', module: 'gdx'
+    }
+    natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-armeabi-v7a"
+    natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-arm64-v8a"
+    natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86"
+    natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86_64"
 }
 
-// called every time gradle gets executed, takes the native dependencies of
-// the natives configuration, and extracts them to the proper libs/ folders
-// so they get packed with the APK.
-task copyAndroidNatives() { 
-    file("libs/armeabi/").mkdirs();
-    file("libs/armeabi-v7a/").mkdirs();
-    file("libs/x86/").mkdirs();
-
-    configurations.natives.files.each { jar ->
-        def outputDir = null
-        if(jar.name.endsWith("natives-armeabi-v7a.jar")) outputDir = file("libs/armeabi-v7a")
-        if(jar.name.endsWith("natives-armeabi.jar")) outputDir = file("libs/armeabi")
-        if(jar.name.endsWith("natives-x86.jar")) outputDir = file("libs/x86")
-        if(outputDir != null) {
-            copy {
-                from zipTree(jar)
-                into outputDir
-                include "*.so"
+// Extracts the libGDX native .so files out of the `natives` jars into the
+// jniLibs folders so AGP packs them into the APK.
+tasks.register('copyAndroidNatives') {
+    doLast {
+        configurations.natives.files.each { jar ->
+            def outputDir = null
+            if (jar.name.endsWith("natives-armeabi-v7a.jar")) outputDir = file("libs/armeabi-v7a")
+            if (jar.name.endsWith("natives-arm64-v8a.jar")) outputDir = file("libs/arm64-v8a")
+            if (jar.name.endsWith("natives-x86.jar")) outputDir = file("libs/x86")
+            if (jar.name.endsWith("natives-x86_64.jar")) outputDir = file("libs/x86_64")
+            if (outputDir != null) {
+                outputDir.mkdirs()
+                copy {
+                    from zipTree(jar)
+                    into outputDir
+                    include "*.so"
+                }
             }
         }
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name == 'preBuild') {
+        task.dependsOn 'copyAndroidNatives'
     }
 }
 
@@ -53,57 +121,12 @@ task run(type: Exec) {
             properties.load(instr)
         }
         def sdkDir = properties.getProperty('sdk.dir')
-        if (sdkDir) {
-            path = sdkDir
-        } else {
-            path = "$System.env.ANDROID_HOME"
-        }
+        path = sdkDir ?: "$System.env.ANDROID_HOME"
     } else {
         path = "$System.env.ANDROID_HOME"
     }
 
     def adb = path + "/platform-tools/adb"
-    commandLine "$adb", 'shell', 'am', 'start', '-n', 'com.desertkun.brainout.android/com.desertkun.brainout.android.AndroidLauncher'
-}
-
-def findComponent(node, name) {
-    node.component.find { it.@name == name }
-}
-
-def changeOption(node, name, value) {
-    node.find { it.@name == name }.@value = value
-}
-
-def setupAndroidSdk(node) {
-    def newModuleRootManager = findComponent(node, 'NewModuleRootManager')
-    newModuleRootManager.remove(newModuleRootManager.find { it.@type == "inheritedJdk" })
-    def newOrderEntry = new Node(null, 'orderEntry', [type: 'jdk', jdkName: 'Android API 22 Platform', jdkType: 'Android SDK'])
-    newModuleRootManager.children().add(1, newOrderEntry)
-}
-
-// sets up the Android Idea project, using the old Ant based build.
-idea {
-    module {
-        sourceDirs += file("src");
-        scopes = [ COMPILE: [plus:[project.configurations.runtimeClasspath]]]
-
-        iml {
-            withXml {
-                def node = it.asNode()
-
-                setupAndroidSdk node
-
-                def builder = NodeBuilder.newInstance();
-                builder.current = node;
-                builder.component(name: "FacetManager") {
-                    facet(type: "android", name: "Android") {
-                        configuration {
-                            option(name: "UPDATE_PROPERTY_FILES", value:"true")
-                            option(name: "ASSETS_FOLDER_RELATIVE_PATH", value:"/../bin/android")
-                        }
-                    }
-                }
-            }
-        }
-    }
+    commandLine "$adb", 'shell', 'am', 'start', '-n',
+            'com.desertkun.brainout.android/com.desertkun.brainout.android.AndroidLauncher'
 }
