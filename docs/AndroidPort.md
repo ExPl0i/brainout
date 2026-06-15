@@ -160,11 +160,22 @@ can be trusted. Open known risks to confirm on first real build:
       land, so it is decided together with signing in Phase 5.
 
 ### Phase 5 — Data packages & signing
-- [ ] Decide: embed public key + signed packages, OR enable an "unsafe" build
-      flavor for Android testing
-- [ ] `./gradlew make_data`; wire packaged assets into `android/assets/`
-- [ ] Validate APK size; if too large, lean on existing `PackageManager`
-      download-on-first-run logic
+> Decision (confirmed): **unsafe for debug now, signing later for release.**
+- [x] Unsafe mode for testing: `AndroidLauncher` sets `BrainOutClient.unsafe`
+      from `ApplicationInfo.FLAG_DEBUGGABLE`, so debug APKs accept unsigned
+      packages while release keeps signature verification. (`make_data` only
+      signs when a private key is present; without one it emits unsigned zips.)
+- [x] `./gradlew make_data`; client packages copied into
+      `android/assets/packages/` (gitignored — build artifacts).
+      `AndroidEnvironment.init()` now copies **all** bundled `*.zip` from
+      `assets/packages/` into `getFilesDir()/packages/` on first run (not just
+      `mainmenu`), because `searchPackages()` scans `Gdx.files.local("packages")`
+      and `ZipContentPackage` needs real files. `build.gradle` adds
+      `androidResources.noCompress 'zip'`.
+- [x] APK size: **~208 MB** debug APK with all 15 client packages bundled
+      (~203 MB of data; `mainmenu` alone is 58 MB). Acceptable for sideloaded
+      testing; if it must shrink later, drop maps from assets and lean on the
+      existing `PackageManager` download-on-first-run path.
 
 ### Phase 6 — Touch controls & UI scale
 - [ ] Bring `AndroidGameController` to a working state (move/action modes,

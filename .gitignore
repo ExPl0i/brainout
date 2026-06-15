@@ -22,6 +22,8 @@ www-test/
 android/libs/
 android/gen/
 local.properties
+# bundled data packages are build artifacts produced by `make_data` (large)
+android/assets/packages/
 .idea/
 *.ipr
 *.iws

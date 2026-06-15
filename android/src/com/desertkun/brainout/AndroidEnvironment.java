@@ -77,29 +77,50 @@ public class AndroidEnvironment extends ClientEnvironment
     {
         super.init();
 
-        File mainMenu = ZipContentPackage.packageFile(ClientConstants.Client.MAINMENU_PACKAGE);
-        FileHandle internal = Gdx.files.internal(ZipContentPackage.packageFilename(ClientConstants.Client.MAINMENU_PACKAGE));
+        unpackBundledPackages();
+    }
 
-        if (!mainMenu.exists())
+    /**
+     * Data packages ship read-only inside the APK assets. {@code searchPackages()}
+     * scans {@code Gdx.files.local("packages")} and {@link ZipContentPackage}
+     * opens packages as real {@link File}s, so any bundled package that is not yet
+     * present in writable app storage is copied there once (on first run).
+     */
+    private void unpackBundledPackages()
+    {
+        File localPackages = new File(context.getFilesDir(), "packages");
+        localPackages.mkdirs();
+
+        FileHandle assetPackages = Gdx.files.internal("packages");
+
+        if (assetPackages.exists())
         {
-            mainMenu.getParentFile().mkdirs();
-
-            if (internal.exists())
+            for (FileHandle pkg : assetPackages.list())
             {
+                if (!pkg.name().endsWith(".zip"))
+                    continue;
+
+                File dst = new File(localPackages, pkg.name());
+
+                if (dst.exists())
+                    continue;
+
                 try
                 {
-                    FileCopy.copyFile(internal.read(), mainMenu);
+                    FileCopy.copyFile(pkg.read(), dst);
                 }
                 catch (IOException e)
                 {
                     e.printStackTrace();
                 }
             }
-            else
-            {
-                // it's bad
-                throw new RuntimeException("Mainmenu package is unable to copy.");
-            }
+        }
+
+        File mainMenu = ZipContentPackage.packageFile(ClientConstants.Client.MAINMENU_PACKAGE);
+
+        if (!mainMenu.exists())
+        {
+            throw new RuntimeException("Mainmenu package is missing from the APK assets.");
         }
     }
 

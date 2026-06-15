@@ -56,6 +56,12 @@ android {
         }
     }
 
+    androidResources {
+        // Bundled data packages are already-compressed .zip; don't let AAPT
+        // recompress them (slower build, no size win) so they stay readable.
+        noCompress 'zip'
+    }
+
     packagingOptions {
         // libGDX ships plain .so natives; keep legacy packaging so they load.
         jniLibs {
