@@ -138,10 +138,19 @@ can be trusted. Open known risks to confirm on first real build:
 - [x] Deep-link: `brainout://` `intent-filter` in manifest; `AndroidLauncher`
       reads `getIntent().getData()` and sets `BrainOutClient.ConnectToLocation`
       before engine start
-- [ ] UI "Direct Connect" menu (host + ports) that base64-encodes
+- [x] UI "Direct Connect" menu (host + ports) that base64-encodes
       `host;tcp;udp;http` and calls the existing connect path
+      — `client/.../menu/impl/DirectConnectMenu.java` (host + tcp/udp/http
+      fields, defaults `36555/36556/36557`); encodes via `Base64.encode` then
+      decodes through the same `HashedUrl` → `ClientController.connect` path as
+      the deep link. Entry point: a "Direct Connect" button added to `IntroMenu`,
+      shown only on `Application.ApplicationType.Android`.
 - [ ] Expose `--offline` / `--unsafe` equivalents as environment flags in
       `AndroidEnvironment`/`AndroidSettings`
+      — deferred to Phase 5: `--offline` is a *server* flag (irrelevant to the
+      client); the only client-side flag is `--unsafe` (`BrainOutClient.unsafe`,
+      accept unsigned packages), which is meaningful only once data packages
+      land, so it is decided together with signing in Phase 5.
 
 ### Phase 5 — Data packages & signing
 - [ ] Decide: embed public key + signed packages, OR enable an "unsafe" build
