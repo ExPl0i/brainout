@@ -24,11 +24,12 @@ public class AndroidLauncher extends AndroidApplication
 
 		AndroidApplicationConfiguration config = new AndroidApplicationConfiguration();
 
-        ClientSettings clientSettings = new AndroidSettings();
+        AndroidEnvironment environment = new AndroidEnvironment(getContext());
+
+        ClientSettings clientSettings = new AndroidSettings(environment, getContext());
         clientSettings.init();
 
-		initialize(BrainOutAndroid.initAndroidInstance(new AndroidEnvironment(getContext()),
-                clientSettings), config);
+		initialize(BrainOutAndroid.initAndroidInstance(environment, clientSettings), config);
 	}
 
 	private void handleConnectIntent(Intent intent)

@@ -1,20 +1,19 @@
 package com.desertkun.brainout;
 
 import android.content.Context;
+import android.provider.Settings;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.desertkun.brainout.controllers.GameController;
 import com.desertkun.brainout.online.KryoNetworkClient;
 import com.desertkun.brainout.online.NetworkClient;
 import com.desertkun.brainout.online.NetworkConnectionListener;
-import com.desertkun.brainout.packages.PackageManager;
+import com.desertkun.brainout.packages.ZipContentPackage;
 import com.desertkun.brainout.utils.FileCopy;
 import com.esotericsoftware.kryo.Kryo;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 
 public class AndroidEnvironment extends ClientEnvironment
 {
@@ -30,16 +29,12 @@ public class AndroidEnvironment extends ClientEnvironment
     @Override
     public String getUniqueId()
     {
-        try
-        {
-            Class<?> c = Class.forName("android.os.SystemProperties");
-            Method get = c.getMethod("getByIndex", String.class, String.class );
-            return (String)(get.invoke(c, "ro.serialno", "unknown" ));
-        }
-        catch (Exception e)
-        {
-            return "";
-        }
+        // Stable per-install device identifier; replaces the old reflection into
+        // the hidden android.os.SystemProperties API (which no longer works).
+        String id = Settings.Secure.getString(context.getContentResolver(),
+                Settings.Secure.ANDROID_ID);
+
+        return id != null ? id : "";
     }
 
     @Override
@@ -49,31 +44,9 @@ public class AndroidEnvironment extends ClientEnvironment
     }
 
     @Override
-    public Reflection getReflection()
+    public String getStoreComponent()
     {
-        return new ClientReflection()
-        {
-            @Override
-            protected Object instantiate(Class clazz)
-            {
-                try
-                {
-                    Constructor<?> constructor = clazz.getConstructor(new Class[]{});
-                    return constructor.newInstance(new Object[]{});
-                }
-                catch (Exception e)
-                {
-                    e.printStackTrace();
-                    return null;
-                }
-            }
-
-            @Override
-            public boolean instanceOf(Class classOff, Object object)
-            {
-                return classOff.isInstance(object);
-            }
-        };
+        return null;
     }
 
     @Override
@@ -99,8 +72,8 @@ public class AndroidEnvironment extends ClientEnvironment
     {
         super.init();
 
-        File mainMenu = new File(PackageManager.getPackagePath(ClientConstants.Client.MAINMENU_PACKAGE));
-        FileHandle internal = Gdx.files.internal(PackageManager.packageFilename(ClientConstants.Client.MAINMENU_PACKAGE));
+        File mainMenu = ZipContentPackage.packageFile(ClientConstants.Client.MAINMENU_PACKAGE);
+        FileHandle internal = Gdx.files.internal(ZipContentPackage.packageFilename(ClientConstants.Client.MAINMENU_PACKAGE));
 
         if (!mainMenu.exists())
         {

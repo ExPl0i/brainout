@@ -86,17 +86,45 @@ can be trusted. Open known risks to confirm on first real build:
 - [x] `AndroidManifest.xml`: dropped legacy `package=`/`uses-sdk`, added
       `android:exported="true"`, removed `WRITE_EXTERNAL_STORAGE`
 - [x] gdx-backend-android + natives incl. **arm64-v8a** and x86_64
-- [ ] Checkpoint: `./gradlew android:assembleDebug` reaches Java compilation
-      (requires JDK 17 + Android SDK — not possible in authoring env)
+- [x] Checkpoint: `./gradlew android:assembleDebug` **builds a debug APK**
+      (verified on JDK 17 + Android SDK platform 34; `android-debug.apk`, ~5 MB,
+      assets not yet bundled — see Phase 5)
+
+> **Verified build environment (2026-06):** Microsoft OpenJDK 17, Android SDK
+> platform-34 + build-tools 34.0.0 (AGP 8.1.4 auto-pulled build-tools 33.0.1),
+> cmdline-tools installed. `local.properties` points `sdk.dir` at the SDK
+> (gitignored). Build command:
+> `gradlew.bat :android:assembleDebug -PwithAndroid` with `JAVA_HOME`=JDK 17.
+> Two packaging conflicts had to be resolved in `android/build.gradle`:
+> 1. **libGDX fork vs stock gdx** — `gdx-backend-android` pulls stock
+>    `com.badlogicgames.gdx:gdx:1.11.0`, which duplicates the
+>    `com.github.desertkun.libgdx:gdx` fork from `:core`/`:client`. Fixed by
+>    excluding the stock `gdx` module from `gdx-backend-android`.
+> 2. **Duplicate META-INF resources** from transitive jars — fixed with a
+>    `packagingOptions.resources.excludes` block.
 
 ### Phase 2 — Fix compilation (API drift)
-- [ ] `AndroidGameController`: update to gdx 1.11 APIs
-      (`scrolled(float,float)`, verify `Touchpad`/`Stage`/`InputProcessor`)
-- [ ] Review `AndroidPackageManager`, `AndroidSettings`, `AndroidEnvironment`
-      for stale calls
-- [ ] `AndroidEnvironment.getUniqueId()`: replace hidden
+- [x] `AndroidGameController`: updated to gdx 1.11 APIs
+      (`scrolled(float,float)`; replaced stale
+      `BrainOutClient.EventMgr.sendEvent(receiver, e)` with the inherited
+      `sendEvent(e)` helper). `Touchpad`/`Stage`/`InputProcessor` compile clean.
+- [x] Reviewed `AndroidPackageManager`/`AndroidPackage`/`AndroidSettings`/
+      `AndroidEnvironment` for stale calls against current `:core`/`:client`:
+      - `ClientEnvironment` now requires `getStoreComponent()`; the engine owns
+        `Reflection` (`BrainOut.R = new Reflection()`), so the old
+        `getReflection()`/`ClientReflection` override was removed.
+      - `ClientSettings` now takes a `ClientEnvironment` ctor and requires
+        `getDefaultDisplayMode()`/`getDisplayModes()` (was `getDefaultWidth/Height`).
+        Added `AndroidDisplayMode` (subclass to reach the protected
+        `Graphics.DisplayMode` ctor) built from device `DisplayMetrics`.
+      - package helpers moved `PackageManager.*` → `ZipContentPackage.packageFile/
+        packageFilename`; `ContentPackage` ctor now throws checked
+        `ValidationException` (declared on `AndroidPackage`/`createPackage`);
+        `PackageFileHandle.entryName` is gone (now stored locally).
+      - `AndroidLauncher` wires env→settings(ctx) in the right order.
+- [x] `AndroidEnvironment.getUniqueId()`: replaced hidden
       `android.os.SystemProperties` reflection with `Settings.Secure.ANDROID_ID`
-- [ ] Checkpoint: module compiles and links against `:client`
+- [x] Checkpoint: module compiles and links against `:client` (full debug APK)
 
 ### Phase 3 — Modern storage
 - [ ] `AndroidEnvironment.getExternalPath()` → `context.getExternalFilesDir(null)`

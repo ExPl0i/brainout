@@ -61,6 +61,27 @@ android {
         jniLibs {
             useLegacyPackaging true
         }
+        // Several transitive jars (Apache HttpClient, Netty, Kryo deps, ...)
+        // each ship their own META-INF metadata/license files; drop the
+        // duplicates so the resource merge does not fail.
+        resources {
+            excludes += [
+                'META-INF/DEPENDENCIES',
+                'META-INF/LICENSE',
+                'META-INF/LICENSE.txt',
+                'META-INF/LICENSE.md',
+                'META-INF/license.txt',
+                'META-INF/NOTICE',
+                'META-INF/NOTICE.txt',
+                'META-INF/NOTICE.md',
+                'META-INF/notice.txt',
+                'META-INF/INDEX.LIST',
+                'META-INF/*.kotlin_module',
+                'META-INF/io.netty.versions.properties',
+                'META-INF/maven/**',
+                '**/*.proto',
+            ]
+        }
     }
 }
 
@@ -69,7 +90,14 @@ configurations { natives }
 dependencies {
     implementation project(':client')
 
-    implementation "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
+    // The core/client modules use the custom libGDX fork
+    // (com.github.desertkun.libgdx:gdx). Exclude the stock gdx core that the
+    // Android backend would otherwise pull in transitively, so only the fork's
+    // gdx classes/resources are on the classpath (avoids duplicate class and
+    // duplicate resource — e.g. default.fragment.glsl — merge failures).
+    implementation("com.badlogicgames.gdx:gdx-backend-android:$gdxVersion") {
+        exclude group: 'com.badlogicgames.gdx', module: 'gdx'
+    }
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"

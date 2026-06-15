@@ -228,8 +228,7 @@ public class AndroidGameController extends GameController
 
                 if (!prevPos.equals(pointPos))
                 {
-                    BrainOutClient.EventMgr.sendEvent(getEventReceiver(),
-                        GameControllerEvent.obtain(GameControllerEvent.Action.move, pointPos));
+                    sendEvent(GameControllerEvent.obtain(GameControllerEvent.Action.move, pointPos));
 
                     prevPos.set(pointPos);
                 }
@@ -270,8 +269,8 @@ public class AndroidGameController extends GameController
     }
 
     @Override
-    public boolean scrolled(int amount)
+    public boolean scrolled(float amountX, float amountY)
     {
-        return ui.scrolled(amount) || super.scrolled(amount);
+        return ui.scrolled(amountX, amountY) || super.scrolled(amountX, amountY);
     }
 }

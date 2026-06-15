@@ -10,16 +10,20 @@ import java.io.IOException;
 
 public class AndroidPackage extends ClientContentPackage
 {
-    public AndroidPackage(String name)
+    public AndroidPackage(String name) throws ContentPackage.ValidationException
     {
         super(name);
     }
 
     public class AndroidFileHandle extends PackageFileHandle
     {
+        private final String entryName;
+
         public AndroidFileHandle(String path)
         {
             super(path);
+
+            this.entryName = path;
         }
 
         @Override
