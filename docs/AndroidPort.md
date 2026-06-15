@@ -186,8 +186,11 @@ can be trusted. Open known risks to confirm on first real build:
 
 ### Phase 7 — Networking
 - [ ] Verify KryoNet TCP/UDP reaches the external machine's real IP
-- [ ] Add `network-security-config` (cleartext) if HTTP port needs it on
-      Android 9+
+      (needs a device — Phase 9)
+- [x] Cleartext allowed: `android:usesCleartextTraffic="true"` on `<application>`
+      so the HTTP port (36557) works on Android 9+ for the self-hosted /
+      direct-connect case (server IP is user-supplied, so a blanket allow rather
+      than a domain-scoped `network-security-config`).
 
 ### Phase 8 — Server on external machine
 - [ ] Document: `./gradlew server:dist`, run jar with `--offline`, bind

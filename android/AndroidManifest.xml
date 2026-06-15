@@ -6,10 +6,14 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- The client talks to a user-supplied server over plain TCP/UDP/HTTP
+         (default ports 36555/36556/36557). Android 9+ blocks cleartext HTTP by
+         default, so allow it for the direct-connect / self-hosted use case. -->
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
+        android:usesCleartextTraffic="true"
         android:theme="@style/GdxTheme" >
         <activity
             android:name="com.desertkun.brainout.android.AndroidLauncher"
