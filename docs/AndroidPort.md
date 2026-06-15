@@ -127,11 +127,18 @@ can be trusted. Open known risks to confirm on first real build:
 - [x] Checkpoint: module compiles and links against `:client` (full debug APK)
 
 ### Phase 3 — Modern storage
-- [ ] `AndroidEnvironment.getExternalPath()` → `context.getExternalFilesDir(null)`
-      / `context.getFilesDir()`
-- [ ] Remove `WRITE_EXTERNAL_STORAGE` from manifest (or cap `maxSdkVersion`)
-- [ ] Verify mainmenu unpack (`AndroidEnvironment.init()`) and package cache
-      use writable dirs
+- [x] `AndroidEnvironment.getExternalPath()` → `context.getFilesDir()`-based
+      absolute path (app-private internal storage, permission-free, scoped-storage
+      safe). Chose `getFilesDir()` over `getExternalFilesDir(null)` so it shares
+      the base that `Gdx.files.local` uses on Android — otherwise mainmenu unpack
+      and `PackageManager.searchPackages()` (which scans `Gdx.files.local
+      ("packages")`) would resolve to different locations. The only caller is
+      `ZipContentPackage`, always with a relative `packages/<name>.zip`.
+- [x] `WRITE_EXTERNAL_STORAGE` already absent from the manifest (Phase 1);
+      only `INTERNET` is requested.
+- [x] mainmenu unpack (`AndroidEnvironment.init()`) and the package cache use
+      writable dirs: packages live under `getFilesDir()` (init() `mkdirs()` the
+      parent), cache via `context.getCacheDir()`.
 
 ### Phase 4 — Server-address entry on Android
 > Decision (confirmed): support **both** deep-link and a UI field.

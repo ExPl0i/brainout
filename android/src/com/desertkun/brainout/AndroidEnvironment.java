@@ -52,7 +52,12 @@ public class AndroidEnvironment extends ClientEnvironment
     @Override
     public String getExternalPath(String from)
     {
-        return android.os.Environment.getExternalStorageDirectory().getAbsolutePath() + "/brainout/" + from;
+        // App-private internal storage: writable without any runtime permission
+        // and not broken by scoped storage on Android 10+. Must share the base
+        // that Gdx.files.local uses on Android (the app files dir) so that
+        // package unpacking and PackageManager.searchPackages() — which scans
+        // Gdx.files.local("packages") — resolve to the same location.
+        return new File(context.getFilesDir(), from).getAbsolutePath();
     }
 
     @Override
