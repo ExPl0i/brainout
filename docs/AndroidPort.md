@@ -193,11 +193,11 @@ can be trusted. Open known risks to confirm on first real build:
       than a domain-scoped `network-security-config`).
 
 ### Phase 8 — Server on external machine
-- [ ] Document: `./gradlew server:dist`, run jar with `--offline`, bind
-      `0.0.0.0`, open ports `36555-36557`
-- [ ] Document connection string format `host;tcp;udp;http` → base64 →
+- [x] Documented (see **Server Quick Reference** below): `./gradlew server:dist`,
+      run jar with `--offline`, bind `0.0.0.0`, open ports `36555-36557`
+- [x] Documented connection string format `host;tcp;udp;http` → base64 →
       `brainout://...`
-- [ ] Note limitation: online events / Battle Pass unavailable in `--offline`
+- [x] Noted limitation: online events / Battle Pass unavailable in `--offline`
       (no EventService); dailies + core gameplay work
 
 ### Phase 9 — Build, sign, test loop
