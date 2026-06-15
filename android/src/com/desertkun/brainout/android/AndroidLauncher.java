@@ -1,6 +1,7 @@
 package com.desertkun.brainout.android;
 
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.net.Uri;
 import android.os.Bundle;
 
@@ -29,7 +30,15 @@ public class AndroidLauncher extends AndroidApplication
         ClientSettings clientSettings = new AndroidSettings(environment, getContext());
         clientSettings.init();
 
-		initialize(BrainOutAndroid.initAndroidInstance(environment, clientSettings), config);
+        BrainOutAndroid app = BrainOutAndroid.initAndroidInstance(environment, clientSettings);
+
+        // Android has no --unsafe CLI flag. Accept unsigned data packages on
+        // debuggable (debug) builds so testing against a self-hosted server
+        // works without bundling a signing key; release builds keep signature
+        // verification (see docs/AndroidPort.md, Phase 5).
+        app.unsafe = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+
+		initialize(app, config);
 	}
 
 	private void handleConnectIntent(Intent intent)
