@@ -32,6 +32,12 @@ public class AndroidLauncher extends AndroidApplication
 
         BrainOutAndroid app = BrainOutAndroid.initAndroidInstance(environment, clientSettings);
 
+        // This port targets self-hosted servers (direct connect / deep link), not
+        // the Anthill online backend — whose HTTP client is incompatible with
+        // Android's stripped org.apache.http anyway. Offline mode short-circuits
+        // CSOnlineInit so startup reaches the menu without that backend.
+        app.offline = true;
+
         // Android has no --unsafe CLI flag. Accept unsigned data packages on
         // debuggable (debug) builds so testing against a self-hosted server
         // works without bundling a signing key; release builds keep signature

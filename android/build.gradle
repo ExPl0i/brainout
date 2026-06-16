@@ -109,6 +109,13 @@ dependencies {
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
 
+    // gdx-controllers Android backend (GamePadManager -> Controllers.initialize()
+    // does Class.forName("...android.AndroidControllers")). Exclude stock gdx so
+    // only the desertkun fork stays on the classpath.
+    implementation("com.badlogicgames.gdx-controllers:gdx-controllers-android:$gdxControllersVersion") {
+        exclude group: 'com.badlogicgames.gdx', module: 'gdx'
+    }
+
     implementation("com.badlogicgames.gdx:gdx-box2d:$gdxVersion") {
         exclude group: 'com.badlogicgames.gdx', module: 'gdx'
     }
@@ -116,6 +123,12 @@ dependencies {
     natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-arm64-v8a"
     natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86"
     natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86_64"
+
+    // FreeType font rendering natives (FreeTypeFontGenerator loads libgdx-freetype.so)
+    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-armeabi-v7a"
+    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-arm64-v8a"
+    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86"
+    natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86_64"
 }
 
 // Extracts the libGDX native .so files out of the `natives` jars into the
@@ -140,9 +153,24 @@ tasks.register('copyAndroidNatives') {
     }
 }
 
+// Bundle the com/desertkun *.class files from :core and :client into an asset
+// jar. AndroidReflection scans this jar for @Reflect/@ReflectAlias annotations,
+// because the APK ships its code as a DEX which the class-path scanner cannot
+// read. Only annotation metadata is read from the jar; the classes themselves
+// are loaded by the DEX class loader.
+tasks.register('bundleReflectClasses', Jar) {
+    archiveFileName = 'desertkun-classes.jar'
+    destinationDirectory = file('assets/reflect')
+    from project(':core').sourceSets.main.output
+    from project(':client').sourceSets.main.output
+    include 'com/desertkun/**'
+    includeEmptyDirs = false
+}
+
 tasks.configureEach { task ->
     if (task.name == 'preBuild') {
         task.dependsOn 'copyAndroidNatives'
+        task.dependsOn 'bundleReflectClasses'
     }
 }
 

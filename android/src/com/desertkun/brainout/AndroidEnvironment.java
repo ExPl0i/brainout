@@ -9,6 +9,7 @@ import com.desertkun.brainout.online.KryoNetworkClient;
 import com.desertkun.brainout.online.NetworkClient;
 import com.desertkun.brainout.online.NetworkConnectionListener;
 import com.desertkun.brainout.packages.ZipContentPackage;
+import com.desertkun.brainout.reflection.Reflection;
 import com.desertkun.brainout.utils.FileCopy;
 import com.esotericsoftware.kryo.Kryo;
 
@@ -47,6 +48,21 @@ public class AndroidEnvironment extends ClientEnvironment
     public String getStoreComponent()
     {
         return null;
+    }
+
+    @Override
+    public Reflection getReflection()
+    {
+        // Android can't scan a JVM class path; AndroidReflection scans the bundled
+        // class jar instead (see bundleReflectClasses + AndroidReflection).
+        try
+        {
+            return new AndroidReflection(context);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException("Failed to prepare reflection class jar", e);
+        }
     }
 
     @Override

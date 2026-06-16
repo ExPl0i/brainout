@@ -7,6 +7,7 @@ import com.desertkun.brainout.utils.FileCopy;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 
 public class AndroidPackage extends ClientContentPackage
 {
@@ -51,7 +52,14 @@ public class AndroidPackage extends ClientContentPackage
                 }
 
                 f.deleteOnExit();
-                FileCopy.copyFile(read(), f);
+
+                // The abstract PackageFileHandle has no read(); pull the entry's
+                // bytes through the normal zip handle and copy them out so Android
+                // can play the extracted file.
+                try (InputStream in = AndroidPackage.super.getFile(entryName).read())
+                {
+                    FileCopy.copyFile(in, f);
+                }
 
                 return Gdx.files.absolute(f.getAbsolutePath());
             }
