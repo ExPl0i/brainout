@@ -178,13 +178,32 @@ can be trusted. Open known risks to confirm on first real build:
       existing `PackageManager` download-on-first-run path.
 
 ### Phase 6 — Touch controls & UI scale
-- [x] `AndroidGameController` works in-game: verified on the emulator the
-      virtual joystick (`touchpad-move`) and fire button render and the player
-      spawns/moves on the freeplay map.
-- [x] Skins `touchpad-move` / `button-touch-launch` / `button-touch-okay/cancel`
-      are present in the built assets (controls render correctly).
+- [x] **`AndroidGameController` rewritten as a twin-stick multi-touch HUD.**
+      The old controller's `Stage` never received touch events (only the
+      controller itself was in the `InputMultiplexer`, and `touchDown/Dragged/Up`
+      were not forwarded to it) — so the `Touchpad` knob never moved and the
+      player could not move. The rewrite tracks raw multi-touch pointers itself:
+      - **Floating** left stick (left half) = move; right stick (right half) =
+        360° aim (`absoluteAim`) with **auto-fire** past a threshold
+        (`beginLaunch`/`endLaunch`); pushing the left stick to the edge = run
+        (`beginRun`/`endRun`). Sticks appear wherever the thumb lands.
+      - A `Stage` holds only the action buttons (those still consume Stage input,
+        forwarded on a button hit-test): **reload / weapon-switch / use / crouch**.
+      - HUD is active only in `action` / `actionWithNoMouseLocking`; held inputs
+        are released on mode change. UI is built lazily on first activation (the
+        `touchpad-*` skin drawables only load with the mainmenu package).
+      - Dead, unreachable `move`-mode (OK/Cancel) UI removed; tuning constants in
+        `AndroidConstants.Touch`.
+- [x] Skins `touchpad-background` / `touchpad-move` / `touchpad-aim` present.
+- [x] Verified component-wise on the emulator (single pointer): left swipe walks
+      the player across the map; right swipe raises and tracks the floating aim
+      stick; the four action buttons render; entering combat mode no longer
+      crashes; sticks hide and don't stick on release. **Two-thumb feel (simultaneous
+      move + aim + fire) needs a final pass on a real touchscreen** (the emulator
+      mouse is single-pointer).
 - [ ] Tune UI scale for phone DPI — menus/dialogs render correctly but are
       desktop-sized (small, centered) on a phone; cosmetic, not blocking.
+- [ ] Tune button layout / sensitivity after the on-device pass.
 
 ### Phase 7 — Networking
 - [ ] Verify KryoNet TCP/UDP reaches the external machine's real IP
