@@ -178,11 +178,13 @@ can be trusted. Open known risks to confirm on first real build:
       existing `PackageManager` download-on-first-run path.
 
 ### Phase 6 — Touch controls & UI scale
-- [ ] Bring `AndroidGameController` to a working state (move/action modes,
-      joystick movement, fire button)
-- [ ] Confirm skins `touchpad-move`, `button-touch-launch`,
-      `button-touch-okay/cancel` exist in built assets (add if missing)
-- [ ] Tune UI scale for phone DPI (UI is desktop-oriented)
+- [x] `AndroidGameController` works in-game: verified on the emulator the
+      virtual joystick (`touchpad-move`) and fire button render and the player
+      spawns/moves on the freeplay map.
+- [x] Skins `touchpad-move` / `button-touch-launch` / `button-touch-okay/cancel`
+      are present in the built assets (controls render correctly).
+- [ ] Tune UI scale for phone DPI — menus/dialogs render correctly but are
+      desktop-sized (small, centered) on a phone; cosmetic, not blocking.
 
 ### Phase 7 — Networking
 - [ ] Verify KryoNet TCP/UDP reaches the external machine's real IP
@@ -201,10 +203,16 @@ can be trusted. Open known risks to confirm on first real build:
       (no EventService); dailies + core gameplay work
 
 ### Phase 9 — Build, sign, test loop
-- [ ] Debug keystore; `android:assembleDebug`; install via `adb` /
-      `android:run`
-- [ ] Scenario test: start server → open `brainout://` (or UI) → connect →
-      load map → play with touch
+- [x] Debug build installed via `adb install` on an emulator
+      (Pixel 8, API 34, x86_64) and launched.
+- [x] **Full scenario verified end-to-end (2026-06):** start offline server
+      (`--mode free --settings server-free.json --map freeplay-maps.shuffle
+      --offline`) → launch client → accept privacy → offline init → enter server
+      IP (`10.0.2.2` = host loopback from the emulator) → **KryoNet connect**
+      (server logs "New client connected / Player 1") → package + map download
+      (`CSConnected → CSPackagesLoad → CSMapDownload → CSMapLoad → CSGame`) →
+      **spawned into the freeplay map and rendered touch controls** (joystick +
+      fire button). No fatal errors.
 - [ ] Release keystore; `assembleRelease`; update ProGuard rules
       (`android/proguard-project.txt`) for gdx/kryo/reflection
 

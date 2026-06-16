@@ -74,12 +74,21 @@ public class AndroidPackage extends ClientContentPackage
     @Override
     public PackageFileHandle getFile(String fileName)
     {
-        if (fileName.endsWith(".mp3"))
+        if (isExtractedAudio(fileName))
         {
-            // extract mp3's because Android can't load them from zip
+            // The Android audio backend (SoundPool/MediaPlayer) needs a real file
+            // — it can't decode a sound straight from the in-zip stream — so
+            // extract audio assets to a temp file first.
             return new AndroidFileHandle(fileName);
         }
 
         return super.getFile(fileName);
+    }
+
+    private static boolean isExtractedAudio(String fileName)
+    {
+        return fileName.endsWith(".mp3")
+            || fileName.endsWith(".wav")
+            || fileName.endsWith(".ogg");
     }
 }

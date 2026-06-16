@@ -339,7 +339,14 @@ public class BrainOutClient extends BrainOut implements ApplicationListener
 
         ContentMgr.unloadAllContent();
 
-        Online.release();
+        // In offline mode the Anthill runtime was never used for requests, and
+        // its release() calls Unirest.shutdown() -> Apache HttpClient, which is
+        // incompatible with Android's stripped org.apache.http (NoSuchFieldError).
+        // Skip it; the process exits right after anyway.
+        if (!offline && Online != null)
+        {
+            Online.release();
+        }
 
         exit(0);
     }
