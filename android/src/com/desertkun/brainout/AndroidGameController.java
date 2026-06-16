@@ -110,21 +110,28 @@ public class AndroidGameController extends GameController
                 : GameControllerEvent.Action.endSit));
         }));
 
-        float pad = minDim() * AndroidConstants.Touch.BUTTON_PAD;
+        float gap = minDim() * AndroidConstants.Touch.BUTTON_PAD;
+        float w = minDim() * AndroidConstants.Touch.BUTTON_W;
+        float h = minDim() * AndroidConstants.Touch.BUTTON_H;
 
-        table.add(weapon).pad(pad);
-        table.add(reload).pad(pad);
+        table.add(weapon).size(w, h).pad(gap);
+        table.add(reload).size(w, h).pad(gap);
         table.row();
-        table.add(crouch).pad(pad);
-        table.add(use).pad(pad);
-        table.pad(minDim() * AndroidConstants.Touch.BUTTON_PAD);
+        table.add(crouch).size(w, h).pad(gap);
+        table.add(use).size(w, h).pad(gap);
+
+        // Float the cluster above the bottom HUD strip and in from the edge.
+        table.padRight(BrainOutClient.getWidth() * AndroidConstants.Touch.BUTTON_MARGIN_RIGHT);
+        table.padBottom(BrainOutClient.getHeight() * AndroidConstants.Touch.BUTTON_MARGIN_BOTTOM);
 
         return table;
     }
 
     private TextButton textButton(String text)
     {
-        return new TextButton(text, BrainOutClient.Skin, "button-small");
+        TextButton button = new TextButton(text, BrainOutClient.Skin, "button-small");
+        button.getLabel().setFontScale(AndroidConstants.Touch.BUTTON_FONT_SCALE);
+        return button;
     }
 
     private ClickListener tap(Runnable action)

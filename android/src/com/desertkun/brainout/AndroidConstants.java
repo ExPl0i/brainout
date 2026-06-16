@@ -23,7 +23,15 @@ public class AndroidConstants extends ClientConstants
         public static final float AIM_RADIUS_PX = 600f;
 
         // --- Action buttons ----------------------------------------------
-        public static final float BUTTON_SIZE = 0.085f;   // fraction of min dim
-        public static final float BUTTON_PAD = 0.02f;      // fraction of min dim
+        // Button cell size and gap as a fraction of the smaller screen dim.
+        public static final float BUTTON_W = 0.20f;
+        public static final float BUTTON_H = 0.10f;
+        public static final float BUTTON_PAD = 0.014f;
+        public static final float BUTTON_FONT_SCALE = 1.25f;
+
+        // Lift the button cluster off the bottom-right corner so it clears the
+        // in-game HP bar / weapon-and-ammo HUD and the system nav bar.
+        public static final float BUTTON_MARGIN_BOTTOM = 0.16f; // fraction of height
+        public static final float BUTTON_MARGIN_RIGHT = 0.035f; // fraction of width
     }
 }
