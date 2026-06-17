@@ -161,10 +161,11 @@ can be trusted. Open known risks to confirm on first real build:
 
 ### Phase 5 — Data packages & signing
 > Decision (confirmed): **unsafe for debug now, signing later for release.**
-- [x] Unsafe mode for testing: `AndroidLauncher` sets `BrainOutClient.unsafe`
-      from `ApplicationInfo.FLAG_DEBUGGABLE`, so debug APKs accept unsigned
-      packages while release keeps signature verification. (`make_data` only
-      signs when a private key is present; without one it emits unsigned zips.)
+- [x] Unsafe mode: `AndroidLauncher` sets `BrainOutClient.unsafe = true`
+      unconditionally (and `offline = true`). This port only talks to self-hosted
+      offline servers — the Anthill backend is never used, so data-signature
+      verification is moot. Applies to release builds too (they are not
+      debuggable). (`make_data` emits unsigned zips when no private key is set.)
 - [x] `./gradlew make_data`; client packages copied into
       `android/assets/packages/` (gitignored — build artifacts).
       `AndroidEnvironment.init()` now copies **all** bundled `*.zip` from
@@ -232,8 +233,25 @@ can be trusted. Open known risks to confirm on first real build:
       (`CSConnected → CSPackagesLoad → CSMapDownload → CSMapLoad → CSGame`) →
       **spawned into the freeplay map and rendered touch controls** (joystick +
       fire button). No fatal errors.
-- [ ] Release keystore; `assembleRelease`; update ProGuard rules
-      (`android/proguard-project.txt`) for gdx/kryo/reflection
+- [x] Release keystore + signed release APK. Signing reads
+      `android/keystore.properties` (gitignored: `storeFile/storePassword/
+      keyAlias/keyPassword`) → `signingConfigs.release`; generate the keystore
+      with `keytool -genkeypair -keystore android/brainout-release.jks -alias
+      brainout -keyalg RSA -keysize 2048 -validity 10000`. Build with
+      `gradlew.bat :android:assembleRelease -PwithAndroid` →
+      `android/build/outputs/apk/release/android-release.apk` (~212 MB, verified
+      signed via `apksigner verify`). **R8/minify left OFF** (string-named
+      content classes would be stripped), so no proguard keep-rules are needed;
+      `minifyEnabled false` for release.
+- [x] Install on a real device: `adb install android-release.apk` (arm64-v8a /
+      armeabi-v7a natives bundled). Pending: the maintainer's on-device pass
+      (movement/aim/fire by hand, button feel, UI scale).
+
+### Server deployment
+- [x] `bin/server/` ships a Docker + plain-Java deploy: `Dockerfile`,
+      `docker-compose.yml`, `run-offline.sh`, and `DEPLOY.md` (prereqs: `server:dist`
+      + `make_data`; ports 36555/tcp, 36556/udp, 36557/tcp; freeplay/lobby/duel
+      modes; connection-string / `brainout://` deep-link recipe).
 
 ## Risks
 
