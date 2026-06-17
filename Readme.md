@@ -58,6 +58,48 @@ Alpha game network. Since no keys are present in this repository, for locally ru
 `--offline` command line argument both to the server and the client.
 `Offline` IDEA configurations already do this.
 
+## Self-hosted server & Android client
+
+An offline, self-hosted setup (no Alpha/Anthill network) plus a working Android
+client is documented in detail in [docs/AndroidPort.md](docs/AndroidPort.md).
+Quick start:
+
+### Server
+
+Build once, then run with Docker or plain Java. Full instructions:
+[bin/server/DEPLOY.md](bin/server/DEPLOY.md).
+
+```bash
+./gradlew server:dist      # builds bin/server/brainout-server.jar
+./gradlew make_data        # builds the content packages it serves
+
+cd bin/server
+# Docker (recommended on a server):
+docker compose up --build -d
+# or plain (Java 17 on the host):
+./run-offline.sh
+```
+
+Ports to open / forward: **36555/tcp**, **36556/udp**, **36557/tcp**
+(tcp / udp / http). Runs offline freeplay by default; lobby/duel modes and the
+`brainout://` connection-string recipe are covered in DEPLOY.md.
+
+### Android client
+
+The Android module is reactivated (AGP 8, libGDX 1.11, twin-stick touch
+controls, offline/direct-connect). Build a signed release APK:
+
+```bash
+# one-time: generate a signing keystore (see docs/AndroidPort.md), then
+gradlew.bat :android:assembleRelease -PwithAndroid
+# -> android/build/outputs/apk/release/android-release.apk
+adb install android/build/outputs/apk/release/android-release.apk
+```
+
+A prebuilt signed APK is also attached to the project's
+[GitHub Releases](../../releases). In-game, use **Direct Connect** / the
+"Enter server IP" prompt (or a `brainout://` deep link) to reach your server.
+
 ## Run configurations
 
 `Server Lobby` – server hosting "Main Menu". Offline version is offline, Alpha version participates
