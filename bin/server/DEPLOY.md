@@ -14,9 +14,12 @@ Both run methods need these files in `bin/server/` (this directory):
 | `brainout-server.jar` | `./gradlew server:dist` (from the repo root) |
 | `packages/*.zip` | `./gradlew make_data` (from the repo root) |
 | `server-free.json`, `freeplay-maps.shuffle`, ... | tracked in the repo |
+| `maps/*.map` | tracked in the repo — the `.map` building blocks for freeplay/lobby/duel |
 
 The jar and `packages/` are git-ignored build artifacts, so build them once
-before deploying.
+before deploying. The `maps/` directory **must** ship with the server — without
+it the server returns HTTP 500 on `/map` and clients fail with
+"error while downloading map".
 
 ## Ports
 

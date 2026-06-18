@@ -11,11 +11,14 @@ FROM eclipse-temurin:17-jre
 
 WORKDIR /app
 
-# Server jar, configuration and the content packages it serves.
+# Server jar, configuration, content packages and the map building blocks.
 COPY brainout-server.jar ./
 COPY *.json ./
 COPY *.shuffle ./
 COPY packages ./packages
+# Freeplay/lobby/duel modes load .map files from here (e.g. maps/fr-*.map);
+# without them the server returns HTTP 500 on /map ("cannot serialize map").
+COPY maps ./maps
 
 # tcp / udp / http  (KryoNet TCP, KryoNet UDP, HTTP)
 EXPOSE 36555/tcp 36556/udp 36557/tcp
