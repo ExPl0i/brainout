@@ -55,9 +55,33 @@ Requires access to the Docker daemon (mount `/var/run/docker.sock` when the pane
 itself runs in a container). **The Docker socket is root-equivalent — keep the
 panel behind auth and never expose it unauthenticated.**
 
+## Deploy (Docker)
+
+The panel runs as its own container and **manages the game container itself**
+(creates/recreates `brainout-server`). So the game server is not a compose
+service alongside the panel — the panel owns its lifecycle. Use either the
+panel *or* `bin/server/`'s standalone compose for a given server, not both.
+
+```bash
+cd panel
+cp .env.example .env          # set PANEL_ADMIN_PASSWORD + PANEL_SECRET_KEY
+docker compose up --build -d
+```
+
+Notes for the host:
+- The panel mounts `/var/run/docker.sock` (root-equivalent) — keep it behind a
+  **TLS reverse proxy** (Caddy/nginx) and never expose it unauthenticated.
+- `../bin/server` is mounted read-only for the catalog; the game image
+  `brainout-server:offline` must already be built (see `bin/server/DEPLOY.md`).
+- Live status uses `host.docker.internal:36557` (the game server's published
+  http port). Adjust `PANEL_STATUS_URL` if your networking differs.
+- Generated one-map sets are written to `PANEL_GENERATED_HOST` (a host path
+  mounted at the same path inside the panel) so they can be bind-mounted into
+  the game container.
+
 ## Roadmap
 
-- Phase 2: `/status` endpoint in the game server → live players/current map.
-- Phase 3: deploy as a compose service behind TLS; harden the `ServerBackend`
-  abstraction.
-- Later: online (Anthill) backend, editable presets, multiple servers.
+- Phase 2 (done): `/status` endpoint in the game server → live players/map.
+- Phase 3 (done): deploy as a container; `ServerBackend` abstraction in place.
+- Later: online (Anthill) backend (`OnlineAnthillBackend`), editable presets,
+  multiple servers, live console commands.
