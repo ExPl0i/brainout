@@ -38,6 +38,32 @@ lines up.
    `dev/keys/public/anthill.pub`; the services that crash-looped on the missing
    keys recovered.
 
+## Backend configured for brainout (done)
+
+Registered the game in the platform DBs and verified the first two online steps:
+
+```sql
+-- dev_environment: app + version -> the seed 'dev' environment (discovery :9502)
+INSERT INTO applications (application_name, application_title, min_api)
+  VALUES ('brainout','Brain/Out','0.2');
+INSERT INTO application_versions (application_id, version_name, version_environment)
+  SELECT application_id, 'valpha2', 1 FROM applications WHERE application_name='brainout';
+
+-- dev_login: gamespace alias the game asks for -> the seed default gamespace (id 1)
+INSERT INTO gamespace_aliases (gamespace_name, gamespace_id) VALUES ('brainout:desktop', 1);
+```
+
+The game's `DISCOVER` list requires a `market` service that anthill-dev lacks, so
+a **stub** was added to `dev/discovery/discovery-services.json` (pointing `market`
+at the store address) and discovery restarted — otherwise multi-discover 404s.
+
+Verified:
+- `GET http://localhost:9503/brainout/valpha2` → `{"discovery":"http://localhost:9502"}`
+- `GET http://localhost:9502/services/login,market` → 200 (all services resolve)
+
+So **env → discovery** of the online init now succeeds for brainout. Next is
+login (anonymous auth in `brainout:desktop`) then profile.
+
 ## Remaining backend blockers
 
 - **store** crash-loops: tables auto-create on startup, but `orders` fails with
@@ -78,9 +104,11 @@ lines up.
 ## Resume checklist
 
 - [ ] Fix store `orders` FK (or recreate without constraint).
-- [ ] Resolve the missing `market` service (stub or drop from DISCOVER).
+- [x] Resolve the missing `market` service (stubbed in discovery -> store addr).
 - [ ] Configure `game_controller` → `game_master`.
 - [x] Make `ENV_SERVICE` configurable (`-Dbrainout.env_service` / `BRAINOUT_ENV_SERVICE`).
-- [ ] Admin: create `brainout` app / `brainout:desktop` gamespace + keys.
+- [x] Register `brainout` app / `valpha2` version / `brainout:desktop` gamespace
+      (SQL above); env→discovery verified.
 - [ ] Run client/server online (no `--offline`); verify login + profile persistence.
+- [ ] store `orders` FK (needed once store is actually used).
 - [ ] Seed economy/content for store/events/battlepass.
