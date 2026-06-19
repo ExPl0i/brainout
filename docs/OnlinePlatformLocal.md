@@ -54,9 +54,12 @@ lines up.
 
 ## Brainout-side integration still needed
 
-1. **Make `ENV_SERVICE` configurable** (`core/Version.java`, hardcoded to
-   `https://env.brainout.org`) and point client+server at the local environment
-   service (`http://<host>:9503`); rebuild.
+1. **`ENV_SERVICE` is now configurable** (done): `core/Version.java` reads the
+   `brainout.env_service` system property or `BRAINOUT_ENV_SERVICE` env var,
+   defaulting to the official endpoint. Point client+server at the local
+   environment service, e.g. run with `-Dbrainout.env_service=http://localhost:9503`
+   (desktop/server) or `BRAINOUT_ENV_SERVICE=http://<host>:9503`. (Android online
+   build would wire this through BuildConfig.)
 2. **Configure the game in the platform** via the admin UI: the `brainout`
    application / `brainout:desktop` gamespace, application keys, environment
    discovery location, and seed content (store/economy — authored, see
@@ -77,7 +80,7 @@ lines up.
 - [ ] Fix store `orders` FK (or recreate without constraint).
 - [ ] Resolve the missing `market` service (stub or drop from DISCOVER).
 - [ ] Configure `game_controller` → `game_master`.
-- [ ] Make `ENV_SERVICE` configurable + repoint to localhost:9503.
+- [x] Make `ENV_SERVICE` configurable (`-Dbrainout.env_service` / `BRAINOUT_ENV_SERVICE`).
 - [ ] Admin: create `brainout` app / `brainout:desktop` gamespace + keys.
 - [ ] Run client/server online (no `--offline`); verify login + profile persistence.
 - [ ] Seed economy/content for store/events/battlepass.
