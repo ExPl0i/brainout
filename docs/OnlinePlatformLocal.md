@@ -61,8 +61,40 @@ Verified:
 - `GET http://localhost:9503/brainout/valpha2` → `{"discovery":"http://localhost:9502"}`
 - `GET http://localhost:9502/services/login,market` → 200 (all services resolve)
 
-So **env → discovery** of the online init now succeeds for brainout. Next is
-login (anonymous auth in `brainout:desktop`) then profile.
+So **env → discovery** of the online init now succeeds for brainout.
+
+### Login works (anonymous auth) — verified by running the client
+
+Running the desktop client online against the local backend
+(`java -Dbrainout.env_service=http://localhost:9503 -jar bin/client/brainout-desktop.jar --unsafe`)
+drove the full boot online init. First attempt **looped**, spamming new anonymous
+accounts: the login server rejected the auth with
+`"User 'anonymous:…' has no scope 'report_upload' asked." result_id:scope_restricted`
+— the seed gamespace allowed only
+`profile_write,profile,game,message_listen,group,party,event,exec_func_call`,
+but the client requests `ClientConstants.Scopes.SCOPES`
+(`profile,profile_write,game_root,game_mod,game_editor,message_listen,game,store,group,static_upload,party,party_create,report_upload,blog,game_ban,market`).
+The runtime maps `scope_restricted` to `forbidden`, so `CSOnlineInit` kept
+creating a new anonymous account and retrying.
+
+Fix — widen the gamespace's allowed scopes to the union of those it requests:
+
+```sql
+-- dev_login: gamespace id 1 allowed scopes (must cover ClientConstants.Scopes.SCOPES)
+UPDATE gamespace SET gamespace_scopes=
+ 'profile,profile_write,game,game_root,game_mod,game_editor,message_listen,store,group,static_upload,party,party_create,report_upload,blog,game_ban,market,event,exec_func_call'
+ WHERE gamespace_id=1;
+```
+
+After this the boot log shows the clean path (no loop):
+`onlineInited → Services discovered → Authenticating → Auth done. → CSWaitForUser`.
+
+So **env → discovery → login (anonymous)** now succeeds end-to-end against the
+local backend; the client reaches the main-menu wait state with a persisted
+anonymous account. **Profile** is fetched only after the first menu interaction
+(`UserPanel`), past `CSWaitForUser` — that step needs a click in the game window,
+so it isn't exercised by a headless run (profile service is up and `profile`/
+`profile_write` scopes are granted, so it's expected to work on first menu entry).
 
 ## Remaining backend blockers
 
@@ -109,6 +141,11 @@ login (anonymous auth in `brainout:desktop`) then profile.
 - [x] Make `ENV_SERVICE` configurable (`-Dbrainout.env_service` / `BRAINOUT_ENV_SERVICE`).
 - [x] Register `brainout` app / `valpha2` version / `brainout:desktop` gamespace
       (SQL above); env→discovery verified.
-- [ ] Run client/server online (no `--offline`); verify login + profile persistence.
+- [x] Widen gamespace allowed scopes to cover `ClientConstants.Scopes.SCOPES`
+      (else login loops on `scope_restricted`); SQL above.
+- [x] Run client online (no `--offline`); login (anonymous auth) verified —
+      reaches `CSWaitForUser` with a persisted account.
+- [ ] Verify profile persistence (needs first menu interaction past
+      `CSWaitForUser`; profile service up + scopes granted).
 - [ ] store `orders` FK (needed once store is actually used).
 - [ ] Seed economy/content for store/events/battlepass.
