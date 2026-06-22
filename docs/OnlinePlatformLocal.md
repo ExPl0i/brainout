@@ -140,24 +140,38 @@ logged in against login service and got `HTTP 500` a few times
 So the controller↔master link works. What's left is **provisioning a spawnable
 brainout server** (see below), not the connection itself.
 
-## Spawning a brainout match (the real remaining work)
+## Spawning a brainout match — WORKING (Phase 2)
 
-The brainout dedicated server **already speaks the Anthill controller spawn
-protocol** — no server code changes needed. When the controller spawns it
-(`BrainOutServer`), it passes:
+Online match spawning works end-to-end against the local stack. Tooling and the
+full write-up live in [`deploy/anthill/`](../deploy/anthill/README.md); summary:
 
-- argv[0] = `sockets` (zmq/ipc address back to the controller →
-  `BrainOutServerController`), argv[1] = `tcp,udp,http` ports;
-- env: `room_settings`, `login_access_token`, `discovery_services`, `room_id`,
-  `server_settings`, `game_max_players`, `party_settings`, `party_members`.
+Flow verified: anonymous player token → `POST :9508/create/brainout/free/valpha2`
+→ master picks the local host/controller → controller spawns the Java server
+→ server online-inits and registers the room → master returns
+`{"location":{"host","ports":[tcp,udp,http]},"key":...}`. The room shows
+`state=SPAWNED` in `dev_game.rooms` and the server runs the live freeplay loop.
 
-To actually spawn matches online, the `dev_game` provisioning tables must be
-filled (all currently empty): `game_servers` (define a `brainout` server +
-settings schema), `game_server_versions` (the spawn **command** + ports +
-limits), and a `deployments` upload (a zip of the dedicated server — jar +
-`packages/` + `maps/` + a `server_settings` json — that the controller
-downloads, extracts, and runs). This is authored via the game admin UI / game
-service API and is the core of online-platform Phase 2.
+The brainout server already speaks the controller spawn protocol (argv =
+sockets + `tcp,udp,http`; env `room_settings`/`server_settings`/`room_id`/
+`game_max_players` + master-minted `login_access_token`/`discovery_services`) —
+**no server code changes**. What it took on the backend:
+
+1. **Provisioning** (`deploy/anthill/provision.sh`): `game_servers` (with
+   `game_settings.binary=run.sh`, `ports:3`, `arguments`, a `token` block and a
+   `discover` list), `game_server_versions`, a `deployments` row
+   (`status=delivered`), and `game_deployments.current_deployment`.
+2. **Server-side token**: the master mints `login_access_token` by
+   authenticating a `dev:brainout_server` account (non-unique) — so that account
+   needs `auth_non_unique` + the server scopes (`provision.sh` creates it).
+3. **JRE in the controller**: the stock controller image has no Java;
+   `deploy/anthill/controller.Dockerfile` adds a Temurin 17 JRE.
+4. **noexec /tmp**: the online controller loads a native JZMQ `.so` from
+   `java.io.tmpdir`, which fails on the controller's noexec `/tmp` tmpfs. The
+   launcher (`anthill-run.sh`) sets `-Djava.io.tmpdir=/opt/brainout-tmp` (baked
+   into the image).
+5. **Deployment files**: staged into the controller's host-mounted
+   `binaries/runtime/brainout/valpha2/1/` (`build-deployment.sh`), so the
+   controller runs them locally without a master delivery/download.
 
 ## Remaining backend blockers
 - **No `market` service**: anthill-dev provides login/profile/store/social/etc.
@@ -195,10 +209,9 @@ service API and is the core of online-platform Phase 2.
 - [x] Resolve the missing `market` service (stubbed in discovery -> store addr).
 - [x] `game_controller` → `game_master` connected (host ACTIVE + heartbeating;
       early `HTTP 500` login retries self-recovered).
-- [ ] Provision a spawnable brainout server: `game_servers` + `game_server_versions`
-      (spawn command/ports) + a `deployments` upload (jar+packages+maps+settings).
-      The server already speaks the controller spawn protocol; this is admin/API
-      authoring (Phase 2).
+- [x] Provision + spawn a brainout match online (Phase 2) — `game_servers` +
+      version + deployment + server dev token + JRE-in-controller + noexec-/tmp
+      fix; room reaches `SPAWNED`. See `deploy/anthill/`.
 - [x] Make `ENV_SERVICE` configurable (`-Dbrainout.env_service` / `BRAINOUT_ENV_SERVICE`).
 - [x] Register `brainout` app / `valpha2` version / `brainout:desktop` gamespace
       (SQL above); env→discovery verified.
