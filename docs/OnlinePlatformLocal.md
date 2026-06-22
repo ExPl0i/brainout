@@ -212,6 +212,9 @@ sockets + `tcp,udp,http`; env `room_settings`/`server_settings`/`room_id`/
 - [x] Provision + spawn a brainout match online (Phase 2) — `game_servers` +
       version + deployment + server dev token + JRE-in-controller + noexec-/tmp
       fix; room reaches `SPAWNED`. See `deploy/anthill/`.
+- [x] Matchmaking join verified — a 2nd player joins the same live room
+      (`/join … auto_create=false`), `rooms.players → 2`, per-player keys.
+- [ ] In-game GUI client connection (kryonet handshake) + gamespace economy/content.
 - [x] Make `ENV_SERVICE` configurable (`-Dbrainout.env_service` / `BRAINOUT_ENV_SERVICE`).
 - [x] Register `brainout` app / `valpha2` version / `brainout:desktop` gamespace
       (SQL above); env→discovery verified.

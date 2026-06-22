@@ -73,10 +73,27 @@ curl -s -X POST http://localhost:9508/create/brainout/free/valpha2 \
 should show the room `SPAWNED`; the per-server log is in the controller at
 `/var/log/brainout_free_<room>.log*`.
 
+### Matchmaking join (verified)
+
+A second player can matchmake into the **same** live room:
+
+```bash
+curl -s -X POST http://localhost:9508/join/brainout/free/valpha2 \
+  --data-urlencode "access_token=$TOKEN2" --data-urlencode "settings={}" \
+  --data-urlencode "auto_create=false"
+# -> same location/ports as the room, a new slot, a per-player key; rooms.players -> 2
+```
+
+Note: a spawned room is reaped if no client actually connects (kryonet) within
+the slot-reservation grace period — `create`/`join` only reserve a slot, so do
+the join promptly when testing by hand.
+
 ## Not yet done
 
 - A real `deployments` upload/delivery (we pre-stage into the host-mounted
   binaries dir, so the controller skips the download). For multi-host, wire the
   master's deployment storage + controller download instead.
-- A client joining the spawned room from the GUI (the API + spawn are proven;
-  the in-game join/economy still needs the gamespace content seeded).
+- The actual in-game connection from the GUI client (kryonet handshake with the
+  per-player key). The whole platform side — spawn, register, matchmake, join,
+  slots, per-player keys — is proven; the netcode join + economy/content for the
+  gamespace are the remaining pieces.
