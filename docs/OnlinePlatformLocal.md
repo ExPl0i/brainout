@@ -96,12 +96,36 @@ anonymous account. **Profile** is fetched only after the first menu interaction
 so it isn't exercised by a headless run (profile service is up and `profile`/
 `profile_write` scopes are granted, so it's expected to work on first menu entry).
 
-## Remaining backend blockers
+## Store FK crash — fixed
 
-- **store** crash-loops: tables auto-create on startup, but `orders` fails with
-  *"Cannot add foreign key constraint"* on MySQL 5.7 (upstream schema/FK-order
-  issue). Workaround needed (fix the FK / engine/charset, or create `orders`
-  without the constraint). store is in the client `DISCOVER` list.
+The **store** service crash-looped: `OrdersModel` creates its tables, but
+`orders` failed with *"Cannot add foreign key constraint"*, after which a query
+hit *"Table 'dev_store.orders' doesn't exist"* and the service restarted.
+
+Root cause: `orders` has `CONSTRAINT orders_ibfk_6 FOREIGN KEY (order_campaign_id)
+REFERENCES campaigns (campaign_id)`, but the model creates `orders` **before**
+`campaigns`, so the referenced table doesn't exist yet → the FK (and thus the
+whole `orders` table) fails to create. `campaigns`/`campaign_items` were absent
+from `dev_store` entirely.
+
+Fix — after the first `docker compose up` (so `dev_store` and the other store
+tables exist), create the three missing tables in dependency order; the store
+uses plain `CREATE TABLE` and tolerates an "already exists" on restart:
+
+```bash
+IMG=anthillplatform/anthill-store:latest
+SQL=/usr/local/lib/python3.7/site-packages/anthill/store/sql
+for f in campaigns campaign_items orders; do
+  docker run --rm --entrypoint sh $IMG -c "cat $SQL/$f.sql" \
+    | docker exec -i mysql mysql -uroot -pRoot123 dev_store
+done
+docker restart anthill_store
+```
+
+After this the store logs `Model 'OrdersModel' started` … `Service 'store'
+started.` and stays up (`RestartCount=0`).
+
+## Remaining backend blockers
 - **game_controller** ↔ **game_master**: connects then "Lost connection,
   reconnecting in 5s" — controller config (host/region/master auth). Needed for
   the Phase-2 spawn model.
@@ -135,7 +159,7 @@ so it isn't exercised by a headless run (profile service is up and `profile`/
 
 ## Resume checklist
 
-- [ ] Fix store `orders` FK (or recreate without constraint).
+- [x] Fix store `orders` FK (create campaigns/campaign_items/orders in dep order).
 - [x] Resolve the missing `market` service (stubbed in discovery -> store addr).
 - [ ] Configure `game_controller` → `game_master`.
 - [x] Make `ENV_SERVICE` configurable (`-Dbrainout.env_service` / `BRAINOUT_ENV_SERVICE`).
@@ -147,5 +171,4 @@ so it isn't exercised by a headless run (profile service is up and `profile`/
       reaches `CSWaitForUser` with a persisted account.
 - [ ] Verify profile persistence (needs first menu interaction past
       `CSWaitForUser`; profile service up + scopes granted).
-- [ ] store `orders` FK (needed once store is actually used).
 - [ ] Seed economy/content for store/events/battlepass.
