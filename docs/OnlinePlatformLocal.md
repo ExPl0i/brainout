@@ -125,14 +125,46 @@ docker restart anthill_store
 After this the store logs `Model 'OrdersModel' started` … `Service 'store'
 started.` and stays up (`RestartCount=0`).
 
+## game_controller ↔ game_master — connected
+
+The controller crash-looped only at first boot: its `MasterConnectionModel`
+logged in against login service and got `HTTP 500` a few times
+(`RestartCount=7`), then recovered. Current state is healthy:
+
+- controller log ends at `Logged in → MasterConnectionModel started →
+  Connected to Game Master` and is otherwise quiet (no reconnect spam).
+- `dev_game.regions` has `local` (id 1, default); `dev_game.hosts` has the
+  controller as `host_state=ACTIVE` with a **current** `host_heartbeat`. So the
+  master sees the controller alive and heartbeating.
+
+So the controller↔master link works. What's left is **provisioning a spawnable
+brainout server** (see below), not the connection itself.
+
+## Spawning a brainout match (the real remaining work)
+
+The brainout dedicated server **already speaks the Anthill controller spawn
+protocol** — no server code changes needed. When the controller spawns it
+(`BrainOutServer`), it passes:
+
+- argv[0] = `sockets` (zmq/ipc address back to the controller →
+  `BrainOutServerController`), argv[1] = `tcp,udp,http` ports;
+- env: `room_settings`, `login_access_token`, `discovery_services`, `room_id`,
+  `server_settings`, `game_max_players`, `party_settings`, `party_members`.
+
+To actually spawn matches online, the `dev_game` provisioning tables must be
+filled (all currently empty): `game_servers` (define a `brainout` server +
+settings schema), `game_server_versions` (the spawn **command** + ports +
+limits), and a `deployments` upload (a zip of the dedicated server — jar +
+`packages/` + `maps/` + a `server_settings` json — that the controller
+downloads, extracts, and runs). This is authored via the game admin UI / game
+service API and is the core of online-platform Phase 2.
+
 ## Remaining backend blockers
-- **game_controller** ↔ **game_master**: connects then "Lost connection,
-  reconnecting in 5s" — controller config (host/region/master auth). Needed for
-  the Phase-2 spawn model.
 - **No `market` service**: anthill-dev provides login/profile/store/social/etc.
   but **not** `market`, which the game's `Constants.Connection.DISCOVER`
-  requires. Options: stub a market service, or drop `MarketService.ID` from the
-  client DISCOVER list (loses trading/real-estate features).
+  requires. Currently **stubbed** in discovery (→ store address) so multi-discover
+  resolves; trading/real-estate calls would still fail until a real market is
+  provided or `MarketService.ID` is dropped from the client DISCOVER list.
 
 ## Brainout-side integration still needed
 
@@ -161,7 +193,12 @@ started.` and stays up (`RestartCount=0`).
 
 - [x] Fix store `orders` FK (create campaigns/campaign_items/orders in dep order).
 - [x] Resolve the missing `market` service (stubbed in discovery -> store addr).
-- [ ] Configure `game_controller` → `game_master`.
+- [x] `game_controller` → `game_master` connected (host ACTIVE + heartbeating;
+      early `HTTP 500` login retries self-recovered).
+- [ ] Provision a spawnable brainout server: `game_servers` + `game_server_versions`
+      (spawn command/ports) + a `deployments` upload (jar+packages+maps+settings).
+      The server already speaks the controller spawn protocol; this is admin/API
+      authoring (Phase 2).
 - [x] Make `ENV_SERVICE` configurable (`-Dbrainout.env_service` / `BRAINOUT_ENV_SERVICE`).
 - [x] Register `brainout` app / `valpha2` version / `brainout:desktop` gamespace
       (SQL above); env→discovery verified.
