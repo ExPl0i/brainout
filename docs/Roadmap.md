@@ -10,6 +10,25 @@ Coordinates the two efforts so they run in parallel without colliding:
 (Android client parity work → [AndroidParity.md](AndroidParity.md); its online
 items share Track B's HTTP fix.)
 
+## Status — Track B proven locally (M1–M2)
+
+Executed locally with Docker against an upstream `anthill-dev` stack. Runbook +
+details in [OnlinePlatformLocal.md](OnlinePlatformLocal.md); spawn tooling in
+[../deploy/anthill/](../deploy/anthill/README.md). Verified end-to-end:
+
+- **M1 core**: env → discovery → **login** (anonymous) → menu; `ENV_SERVICE`
+  configurable; brainout app/version/gamespace registered; **profile**, **store**
+  services up (store FK fixed).
+- **M2 online rooms (desktop)**: **game-controller ↔ master** connected; a custom
+  controller image (JRE17) spawns the Java dedicated server; a client `POST
+  /create` **spawns a live match** (room `SPAWNED`, freeplay loop running); a 2nd
+  player **matchmakes/join**s the same room (`players → 2`, per-player keys).
+  No server code changes — `BrainOutServer` already speaks the spawn protocol.
+
+Remaining for M2 polish: the **in-game GUI/kryonet connection** from the real
+client, and **TLS/staging** (local run is plain HTTP). M4/M5 economy + content
+authoring not started.
+
 ## How they relate (and the conflict to manage)
 
 - **A serves the offline deployment** (works today). **B builds the online
