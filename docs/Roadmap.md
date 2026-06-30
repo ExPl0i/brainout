@@ -26,8 +26,14 @@ details in [OnlinePlatformLocal.md](OnlinePlatformLocal.md); spawn tooling in
   No server code changes — `BrainOutServer` already speaks the spawn protocol.
 
 Remaining for M2 polish: the **in-game GUI/kryonet connection** from the real
-client, and **TLS/staging** (local run is plain HTTP). M4/M5 economy + content
-authoring not started.
+client, and **TLS/staging** (local run is plain HTTP).
+
+**M4 (economy) started** — see [OnlineEconomy.md](OnlineEconomy.md): the desktop
+economy is profile-centric (IAP store is desktop-disabled); currencies seeded;
+new online players now get an authored **starter profile** (generous kit) instead
+of an empty one (`PlayerClient.setupStarterProfile`, built + deployed). Remaining:
+verify the populated profile via the GUI join, and author the store catalog for
+Steam/Android IAP. M5 not started.
 
 ## How they relate (and the conflict to manage)
 

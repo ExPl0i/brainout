@@ -38,20 +38,25 @@ profile. Offline, by contrast, `setupOfflineProfile()` applies the rich
 nuclear-material`). So a new **online** player has no wallet, no loadout — the
 menu shows nothing.
 
-**Fix (first M4 implementation step):** on the online `notFound` branch, apply a
-**starter profile** instead of a blank one (mirrors offline). Two parts:
+**Fix (DONE — first M4 implementation step):** on the online `notFound` branch,
+apply a **starter profile** instead of a blank one (mirrors offline).
 
-1. Author a clean `starter-profile.json` (a deliberate starting kit — NOT the
-   test `default-profile.json`, which carries debug stats like
-   `durability-of-weapon-mp5: 4.997399` and `name: "fefe"`). It needs: `level`,
-   `layout`, default `slots` (a starter primary/secondary/melee/special + skin),
-   `stats` (starting `gears`/`skillpts`/`nuclear-material`), `items`, empty
-   `trophies`/`limits`.
-2. Wire `PlayerClient` so the online `notFound` branch loads it (same path the
-   offline setup uses), so it persists to the profile service on the first write.
+1. Authored [`bin/server/starter-profile.json`](../bin/server/starter-profile.json)
+   — a clean starting kit (NOT the test `default-profile.json`, which carried
+   debug stats like `durability-of-weapon-mp5: 4.997399` and `name: "fefe"`):
+   `level 1`, `layout-2`, the default loadout (mp5 / makarov / knife / smoke /
+   green skin), `items {sl-grn-smoke:1}`, empty `trophies`/`limits`.
+2. `PlayerClient.setupStarterProfile()` loads it on the online `notFound` branch
+   (falling back to a blank profile if the file is missing) and marks it dirty so
+   it persists to the profile service on first write.
 
-Open product decision: **what a new player starts with** (currency amounts +
-which weapons unlocked). Needs a call before authoring `starter-profile.json`.
+**Starting kit (chosen — "generous"):** `gears 5000`, `skillpts 500`,
+`nuclear-material 100` — enough to immediately try upgrades/unlocks and exercise
+the menu/store UI. Tune the amounts in `starter-profile.json` to rebalance.
+
+Built (`server:dist`) and restaged into the deployment; a regression spawn still
+reaches `SPAWNED`. The profile is applied when a player **connects** to the game
+server (kryonet), so populated-profile verification rides on the GUI client join.
 
 ## Store catalog (Steam/Android / later)
 
@@ -73,8 +78,10 @@ tiers/prices; items reference in-game content ids from the packages.
 
 - [x] Currencies (`gears`/`skillpts`/`nuclear-material`/`ru`/`USD`) + `main`
       store seeded (`deploy/anthill/seed-economy.sh`).
-- [ ] Decide the new-player starting kit (currencies + unlocked loadout).
-- [ ] Author `starter-profile.json`; wire the online `notFound` branch to it.
-- [ ] Rebuild `server:dist`, restage the deployment, verify a fresh player's
-      profile is populated.
+- [x] Decide the new-player starting kit — **generous** (5000/500/100).
+- [x] Author `starter-profile.json`; wire the online `notFound` branch to it
+      (`PlayerClient.setupStarterProfile`).
+- [x] Rebuild `server:dist`, restage the deployment (regression spawn OK).
+- [ ] Verify a fresh player's profile is populated — needs the GUI client join
+      (player connects → `notFound` → starter profile written to profile service).
 - [ ] Store catalog (items/tiers/prices) for Steam/Android IAP.
