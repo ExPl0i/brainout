@@ -76,13 +76,51 @@ Fix: `ClientProfile.resetDiffBaseline()` clears that baseline, and
 so the first flush uploads the profile in full. Verified: the stored payload now
 carries `stats` (5000/500/100), `level`, `slots`, `layout`, `trophies`, `limits`.
 
-## Store catalog (Steam/Android / later)
+## Store catalog — seeded
 
-For the IAP builds, author in `dev_store`: `stores` (done: `main`),
-`store_components` (payment method, e.g. an offline/test component),
-`items` + `tiers` + tier prices per currency, optional `categories` and
-`campaigns`. The client lists a store via `IAP.GetStore(storeName, …)` and reads
-tiers/prices; items reference in-game content ids from the packages.
+`seed-economy.sh` now authors a starter catalog in `dev_store`: a `default`
+category, one `tier-small` tier, and three items in the `main` store.
+
+**Priced in in-game currency, not IAP.** No payment provider is wired up, so
+items carry an `offline-price` in `item_public_data`; `StoreMenu.purchaseOffline()`
+spends the profile wallet directly and needs no store component. (A tier row is
+still required — `items.item_tier` is NOT NULL with an FK.)
+
+The two payloads are different contracts:
+
+| Field | Consumed by | Shape |
+|---|---|---|
+| `item_public_data` | the client UI | `title`/`description` per language (`"EN"` is `Environment.getDefaultLanguage()`), `image`, `offline-price:{currency,amount}` |
+| `item_private_data` | the server on a paid order | `ServerRewards`: `{"actions":[{"action":…,"id":…,"amount":…}]}` — applied by `PlayerClient.applyOrderContents` |
+
+Action types (`Reward.ActionType`): `unlock` (grant content), `unlockStat`,
+`addstat` (add a currency/stat), `addbattlepoints`.
+
+Seeded items: *Crate of Gears* (100 `skillpts` → `addstat gears 1000`),
+*Nuclear Material* (2000 `gears` → `addstat nuclear-material 50`), and
+*TOZ-34* (1500 `gears` → `unlock sl-pri-toz34`).
+
+**Android shows the store, desktop does not.** `ClientEnvironment.storeEnabled()`
+defaults to **true**; `DesktopEnvironment` overrides it to false, while
+`AndroidEnvironment` does not — so the catalog is visible in the Android build.
+`AndroidEnvironment.getStoreName()` now returns `"main"` (it inherited `null`,
+so the client asked for no store at all and the menu stayed empty).
+
+Two traps worth remembering, both fixed in the script:
+
+- **Encoding.** Cyrillic titles must go through `SET NAMES utf8mb4` — the mysql
+  client flag alone was not enough, and without it the API served mojibake
+  (`Ð¯…`, UTF-8 bytes stored as latin1).
+- **Idempotency.** `tiers` has only a *non-unique* KEY on
+  `(gamespace_id, store_id, tier_name)`, so `ON DUPLICATE KEY UPDATE` never
+  fires and repeat runs piled up duplicate tiers until `SET @tier` failed with
+  *"Subquery returns more than 1 row"*. The script now inserts the tier only
+  `WHERE NOT EXISTS`. The seed also no longer swallows SQL errors — that is how
+  the duplicate-tier failure stayed invisible for several runs.
+
+Verified via the store service: `GET /store/main` returns all three items with
+correct Cyrillic and the right `offline-price` values, and repeat seed runs are
+clean.
 
 ## Verification
 

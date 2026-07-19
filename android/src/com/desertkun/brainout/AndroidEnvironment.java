@@ -45,8 +45,19 @@ public class AndroidEnvironment extends ClientEnvironment
     }
 
     @Override
+    public String getStoreName()
+    {
+        // Same catalog the Steam build uses. Without a name the client asks the
+        // store service for nothing and the store menu stays empty.
+        return "main";
+    }
+
+    @Override
     public String getStoreComponent()
     {
+        // No real payment provider is wired up on Android yet, so IAP tiers can't
+        // be charged. Items priced with "offline-price" (in-game currency) are
+        // bought through purchaseOffline(), which doesn't need a component.
         return null;
     }
 
