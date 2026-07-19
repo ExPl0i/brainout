@@ -87,9 +87,41 @@ blocker for local verification.
 - [x] Verified in the built APK: **4 dex files reference
       `shaded/org/apache/http`, zero reference `Lorg/apache/http/`** — the
       stripped Android copy can never be reached.
-- [ ] Run the online APK on the emulator; verify env→discovery→login in logcat
-      (`onlineInited → Services discovered → Authenticating → Auth done`).
+- [x] **Ran the online APK on the emulator — the shading works on device.**
+      logcat shows the full chain:
+      `CSOnlineInit → onlineInited → Services discovered → Authenticating →
+      Auth done. → CSWaitForUser`, and every HTTP stack frame is
+      `shaded.org.apache.http.*` (no `NoSuchFieldError`). The client then
+      matchmakes into the lobby and reaches
+      `CSConnecting → [kryonet] Connecting: 127.0.0.1:38000/38001`.
+- [ ] Actual in-game connection from the emulator — blocked by transport, not by
+      the port (see below).
 - [ ] TLS staging backend for a real (non-emulator) online build.
+
+## Reaching the backend from the emulator
+
+The emulator resolves `localhost` to *itself*, while the backend advertises
+`localhost` addresses (env discovery location, discovery's `external` entries,
+and the controller's `gs_host`). Two ways around it:
+
+- **`adb reverse`** (what we used): map the host's ports into the emulator, so
+  `localhost:<port>` works unchanged and the desktop client keeps working too.
+  Set up the anthill service ports plus the game pool — and narrow the pool
+  first (`ports_pool_from/to`), since reverses are per-port:
+  ```bash
+  for p in 9501 9502 9503 9506 9508 9510 9511 9512 9514 9516 9517 9518; do adb reverse tcp:$p tcp:$p; done
+  for p in $(seq 38000 38010); do adb reverse tcp:$p tcp:$p; done
+  ```
+  **Limitation: `adb reverse` is TCP-only.** kryonet needs TCP *and* UDP, so the
+  in-game connection fails in `UdpConnection.send` even though login and
+  matchmaking succeed. Good enough to validate the shading + online init, not
+  enough to actually play.
+- **Host LAN IP** (works for TCP+UDP, and for real devices): point the env
+  discovery location, discovery `external` addresses and `gs_host` at the host's
+  LAN address. We tried `192.168.0.215` — Docker binds `0.0.0.0` but the host
+  firewall refused the connections, so it needs a firewall rule. This is the
+  path for real-device testing, and it disappears entirely once the stack runs
+  on the Ubuntu server.
 
 ### Note on jitpack
 
