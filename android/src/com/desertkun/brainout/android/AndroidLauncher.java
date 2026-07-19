@@ -11,6 +11,18 @@ import com.desertkun.brainout.client.settings.ClientSettings;
 
 public class AndroidLauncher extends AndroidApplication
 {
+	static
+	{
+		// Version.ENV_SERVICE resolves the backend URL from this system property
+		// inside a static initializer, so it has to be set before any core class
+		// is touched — hence a static block rather than onCreate().
+		if (BuildConfig.ONLINE_ENABLED
+				&& BuildConfig.ENV_SERVICE != null && !BuildConfig.ENV_SERVICE.isEmpty())
+		{
+			System.setProperty("brainout.env_service", BuildConfig.ENV_SERVICE);
+		}
+	}
+
 	@Override
 	protected void onCreate (Bundle savedInstanceState)
 	{
@@ -31,14 +43,14 @@ public class AndroidLauncher extends AndroidApplication
 
         BrainOutAndroid app = BrainOutAndroid.initAndroidInstance(environment, clientSettings);
 
-        // This Android port only ever talks to self-hosted servers (direct
-        // connect / deep link), never the Anthill online backend — whose HTTP
-        // client is incompatible with Android's stripped org.apache.http anyway.
-        // So it always runs offline (short-circuits CSOnlineInit) and always
-        // accepts the bundled unsigned data packages (no --unsafe CLI on Android,
-        // and data signing is moot without the online backend). This applies to
-        // release builds too, which are not debuggable.
-        app.offline = true;
+        // Online is opt-in at build time (-PbrainoutOnline=true). It works on
+        // Android only because :anthill-android relocates org.apache.http away
+        // from Android's stripped bootclasspath copy — see docs/AndroidOnline.md.
+        // The default (offline) build talks to self-hosted servers directly via
+        // direct connect / brainout:// deep link and short-circuits CSOnlineInit.
+        // Bundled unsigned data packages are always accepted (there is no
+        // --unsafe CLI on Android). Applies to release builds too.
+        app.offline = !BuildConfig.ONLINE_ENABLED;
         app.unsafe = true;
 
 		initialize(app, config);

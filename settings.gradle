@@ -8,4 +8,7 @@ if (System.getenv('ANDROID_HOME') != null ||
     System.getenv('ANDROID_SDK_ROOT') != null ||
     gradle.startParameter.projectProperties.containsKey('withAndroid')) {
     include 'android'
+    // Shaded anthill-runtime (org.apache.http relocated) so the Android client can
+    // go online — Android's stripped bootclasspath org.apache.http otherwise wins.
+    include 'anthill-android'
 }

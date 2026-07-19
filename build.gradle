@@ -19,7 +19,12 @@ buildscript {
         mavenCentral()
         maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
         jcenter()
-        maven { url "https://jitpack.io" }
+        maven {
+            url "https://jitpack.io"
+            // jitpack claims every com.github.* group and "resolves" it, which stops
+            // Gradle before it reaches the plugin portal. Shadow lives on the portal.
+            content { excludeGroup "com.github.johnrengelman" }
+        }
         maven { url "https://plugins.gradle.org/m2/" }
         maven { url "https://repo.cuba-platform.com/content/groups/work/" }
         if (androidEnabled) {
@@ -31,6 +36,8 @@ buildscript {
         if (androidEnabled) {
             // AGP 8.x requires JDK 17 and a configured Android SDK.
             classpath 'com.android.tools.build:gradle:8.1.4'
+            // Shadow builds the relocated anthill-runtime for the Android client.
+            classpath 'com.github.johnrengelman:shadow:8.1.1'
         }
         classpath 'org.robovm:robovm-gradle-plugin:1.9.0'
         classpath 'com.guardsquare:proguard-gradle:7.6.0'

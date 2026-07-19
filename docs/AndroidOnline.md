@@ -56,12 +56,44 @@ The package must be **relocated** so Android's `org.apache.http` is never hit.
   (the same chain the desktop client now completes), then reaching the menu.
 - Then matchmake into a match (depends on the in-game join working).
 
+## Build it
+
+```bash
+# offline APK (default, unchanged behaviour)
+./gradlew :android:assembleDebug -PwithAndroid
+
+# online APK against the local stack (10.0.2.2 = host loopback from the emulator)
+./gradlew :android:assembleDebug -PwithAndroid -PbrainoutOnline=true \
+    -PbrainoutEnvService=http://10.0.2.2:9503
+```
+
+`usesCleartextTraffic="true"` is already set in the manifest, so the online APK
+can talk plain HTTP to the local backend — TLS is a production concern, not a
+blocker for local verification.
+
 ## Status
 
 - [x] Root-caused (Unirest → Apache HttpClient vs Android stripped boot copy).
-- [ ] `:anthill-android` shaded/relocated artifact (Shadow plugin).
-- [ ] Android module consumes it; exclude the un-relocated originals.
-- [ ] `AndroidLauncher` offline flag behind a build flag; `ENV_SERVICE` via
-      `BuildConfig` → `AndroidEnvironment`.
-- [ ] TLS staging backend (shared with the Ubuntu deploy track).
-- [ ] Build + run online APK; verify the env→discovery→login chain on device.
+- [x] `:anthill-android` shaded artifact — relocates `org.apache.http` →
+      `shaded.org.apache.http` (also commons-codec/logging), bundles
+      anthill-runtime + unirest + websocket/slf4j, excludes `org.json` (core
+      declares it directly, so bundling would duplicate).
+- [x] `:android` consumes it via the `shaded` configuration and excludes the
+      un-relocated `anthill-runtime-java` / `unirest-java` / `httpcomponents`.
+      `checkDuplicateClasses` passes.
+- [x] `AndroidLauncher`: `app.offline = !BuildConfig.ONLINE_ENABLED`; the env URL
+      is pushed into the `brainout.env_service` system property from a **static
+      block** (Version resolves it in a static initializer).
+- [x] Verified in the built APK: **4 dex files reference
+      `shaded/org/apache/http`, zero reference `Lorg/apache/http/`** — the
+      stripped Android copy can never be reached.
+- [ ] Run the online APK on the emulator; verify env→discovery→login in logcat
+      (`onlineInited → Services discovered → Authenticating → Auth done`).
+- [ ] TLS staging backend for a real (non-emulator) online build.
+
+### Note on jitpack
+
+The Shadow plugin wouldn't resolve until jitpack was content-filtered in the
+buildscript: jitpack claims **every** `com.github.*` group and "resolves" it,
+which stops Gradle before it reaches the plugin portal. `excludeGroup
+"com.github.johnrengelman"` fixes it.

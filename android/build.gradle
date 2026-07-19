@@ -36,6 +36,20 @@ android {
         ndk {
             abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
         }
+
+        // Online support is opt-in so the default APK keeps the offline /
+        // direct-connect behaviour:  -PbrainoutOnline=true
+        // ENV_SERVICE is the Anthill environment service; 10.0.2.2 is how the
+        // Android emulator reaches the host machine's localhost.
+        buildConfigField 'boolean', 'ONLINE_ENABLED',
+                (project.findProperty('brainoutOnline') ?: 'false').toString()
+        buildConfigField 'String', 'ENV_SERVICE',
+                "\"${project.findProperty('brainoutEnvService') ?: 'http://10.0.2.2:9503'}\""
+    }
+
+    buildFeatures {
+        // AGP 8 no longer generates BuildConfig unless asked
+        buildConfig true
     }
 
     sourceSets {
@@ -118,7 +132,18 @@ android {
 configurations { natives }
 
 dependencies {
-    implementation project(':client')
+    // The online stack (anthill-runtime -> Unirest -> Apache HttpClient) can't run
+    // on Android as published: Android's stripped bootclasspath org.apache.http
+    // shadows any bundled copy, so the full client's API is missing at runtime
+    // (NoSuchFieldError: AllowAllHostnameVerifier.INSTANCE). Drop the originals
+    // here and take them from :anthill-android, which relocates org.apache.http
+    // to shaded.org.apache.http. See docs/AndroidOnline.md.
+    implementation(project(':client')) {
+        exclude group: 'com.github.anthill-platform', module: 'anthill-runtime-java'
+        exclude group: 'com.mashape.unirest', module: 'unirest-java'
+        exclude group: 'org.apache.httpcomponents'
+    }
+    implementation project(path: ':anthill-android', configuration: 'shaded')
 
     // The core/client modules use the custom libGDX fork
     // (com.github.desertkun.libgdx:gdx). Exclude the stock gdx core that the
