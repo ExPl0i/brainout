@@ -720,6 +720,10 @@ public class PlayerClient extends Client
 
         if (profile != null)
         {
+            // The backend has no profile for this account yet, so the starter kit
+            // must be uploaded in full — otherwise doSave() diffs against it and
+            // persists nothing but the session's changes.
+            profile.resetDiffBaseline();
             profile.setDirty();
         }
     }

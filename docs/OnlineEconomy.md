@@ -58,6 +58,24 @@ Built (`server:dist`) and restaged into the deployment; a regression spawn still
 reaches `SPAWNED`. The profile is applied when a player **connects** to the game
 server (kryonet), so populated-profile verification rides on the GUI client join.
 
+## The diff-baseline bug (found by the E2E run)
+
+The first live run applied the starter profile correctly — the client HUD showed
+the full kit — but `dev_profile.account_profiles` ended up holding only the
+session's changes (`items`, a few `slots`, `badges`), with **no `stats`, `level`
+or loadout**. On the next login the profile would then *exist*, so the starter
+path would never run again and the player would be left with no wallet.
+
+Cause: `ClientProfile.doSave()` uploads
+`JSONDiff.Diff(profile, ext)` — a diff against `profile`, which is assumed to be
+what the backend already holds. For a locally-seeded starter profile the backend
+holds *nothing*, so every starter field looked "already saved" and was skipped.
+
+Fix: `ClientProfile.resetDiffBaseline()` clears that baseline, and
+`PlayerClient.setupStarterProfile()` calls it before marking the profile dirty —
+so the first flush uploads the profile in full. Verified: the stored payload now
+carries `stats` (5000/500/100), `level`, `slots`, `layout`, `trophies`, `limits`.
+
 ## Store catalog (Steam/Android / later)
 
 For the IAP builds, author in `dev_store`: `stores` (done: `main`),
@@ -82,6 +100,10 @@ tiers/prices; items reference in-game content ids from the packages.
 - [x] Author `starter-profile.json`; wire the online `notFound` branch to it
       (`PlayerClient.setupStarterProfile`).
 - [x] Rebuild `server:dist`, restage the deployment (regression spawn OK).
-- [ ] Verify a fresh player's profile is populated — needs the GUI client join
-      (player connects → `notFound` → starter profile written to profile service).
+- [x] **Verified end-to-end with the real client**: a fresh player connects,
+      the server logs `Player has no profile! Applying starter profile.`, the
+      client HUD shows **5000 gears / 500 skillpts / 100 nuclear** with the
+      MP5 + Makarov + smoke + knife loadout, and `dev_profile.account_profiles`
+      persists the full profile (`stats`, `level`, `slots`, `layout`, …).
+- [x] Fixed the persistence bug this surfaced (see below).
 - [ ] Store catalog (items/tiers/prices) for Steam/Android IAP.
