@@ -88,6 +88,38 @@ Note: a spawned room is reaped if no client actually connects (kryonet) within
 the slot-reservation grace period — `create`/`join` only reserve a slot, so do
 the join promptly when testing by hand.
 
+## Verified with the real desktop client (and what it taught us)
+
+Running the desktop client online against this stack got as far as:
+`Auth success → CSGetRegions → CSFindLobby → CSConnecting → [kryonet] Connecting`.
+Two real gaps surfaced and are fixed in `provision.sh`:
+
+1. **The client joins a `lobby` first**, not a match — `CSFindLobby` calls
+   `joinGame(…, "lobby", auto_create=true)`. With only the `free` server
+   provisioned the client died with `404`.
+2. **`--map` is a file path**, not a map name: `MapSource` does
+   `Gdx.files.absolute(settings.map)`, so `--map lobby` threw
+   `Map 'lobby' was not found`; it must be `maps/lobby.map`. (The `free` server
+   works because `freeplay-maps.shuffle` *is* a file in the deployment root.)
+
+### Docker Desktop on Windows blocks the last hop
+
+The lobby server spawns and runs (`Server started`, `Inited: {"status":"OK"}`),
+but the Windows client cannot open TCP to it. Measured against one live server:
+
+| From | game port 38009 | service port 9501 |
+|---|---|---|
+| inside the Docker VM (host-network container) | **open** | — |
+| Windows host | **refused** | open |
+
+Only `anthill_game_controller` uses `network_mode: host`; every other service is
+bridge-networked with an explicit `ports:` mapping (hence 9501 works). Docker
+Desktop does not forward a host-network container's **dynamically allocated**
+ports (the 38000-40000 game pool) to Windows. Options: enable Docker Desktop's
+host-networking feature, narrow `ports_pool_*` and publish that range from a
+bridge-networked controller, or run the stack on real Linux — where
+`network_mode: host` behaves natively and the problem disappears.
+
 ## Not yet done
 
 - A real `deployments` upload/delivery (we pre-stage into the host-mounted

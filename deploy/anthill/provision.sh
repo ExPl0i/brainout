@@ -62,6 +62,22 @@ SET @gsid = (SELECT game_server_id FROM game_servers WHERE gamespace_id=$GAMESPA
 INSERT INTO game_server_versions (gamespace_id, game_name, game_version, game_server_id, server_settings)
 VALUES ($GAMESPACE_ID, '$GAME', '$VERSION', @gsid, '{}')
 ON DUPLICATE KEY UPDATE server_settings=VALUES(server_settings);
+
+-- The client does NOT go straight into a match: after login it joins the "lobby"
+-- game server (CSFindLobby -> joinGame(..., "lobby", auto_create=true)), so it
+-- must exist or the client errors with 404.
+-- NOTE: --map takes a FILE PATH (MapSource does Gdx.files.absolute(map)), so it
+-- is 'maps/lobby.map', not 'lobby'.
+INSERT INTO game_servers (gamespace_id, game_name, game_server_name, \`schema\`, max_players, game_settings, server_settings)
+VALUES ($GAMESPACE_ID, '$GAME', 'lobby', '{}', 32,
+ '{"binary":"run.sh","ports":3,"max_players":32,"arguments":["--mode","lobby","--settings","server-lobby.json","--map","maps/lobby.map"],"token":{"authenticate":true,"username":"$SRV_USER","password":"$SRV_PASS","scopes":"$TOKEN_SCOPES"},"discover":$DISCOVER}',
+ '{}')
+ON DUPLICATE KEY UPDATE game_settings=VALUES(game_settings), max_players=VALUES(max_players);
+
+SET @lid = (SELECT game_server_id FROM game_servers WHERE gamespace_id=$GAMESPACE_ID AND game_name='$GAME' AND game_server_name='lobby');
+INSERT INTO game_server_versions (gamespace_id, game_name, game_version, game_server_id, server_settings)
+VALUES ($GAMESPACE_ID, '$GAME', '$VERSION', @lid, '{}')
+ON DUPLICATE KEY UPDATE server_settings=VALUES(server_settings);
 INSERT INTO deployments (deployment_id, gamespace_id, game_name, game_version, deployment_hash, deployment_status)
 VALUES ($DEPLOYMENT_ID, $GAMESPACE_ID, '$GAME', '$VERSION', 'local', 'delivered')
 ON DUPLICATE KEY UPDATE deployment_status='delivered';
