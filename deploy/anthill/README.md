@@ -9,6 +9,35 @@ controller → Java server spawns, online-inits (server token + discovery),
 registers the room → master returns the join location to the client. The room
 shows `state=SPAWNED` and the server runs the live freeplay loop.
 
+## Deploy (one command)
+
+`deploy.sh` brings the whole backend up from scratch and is idempotent — it ties
+together every step that used to be manual (the upstream stack, keys, the
+brainout registration, the scope/FK/market fixes, the JRE-17 controller image,
+game-server provisioning, deployment staging and the economy seed).
+
+```bash
+# prereq: build the server payload once
+./gradlew server:dist make_data
+
+# local
+./deploy/anthill/deploy.sh
+
+# real server — clients connect to PUBLIC_HOST
+PUBLIC_HOST=203.0.113.10 ./deploy/anthill/deploy.sh
+```
+
+It clones `anthill-dev` next to the repo if missing (override `ANTHILL_DIR`),
+generates the controller override (JRE-17 image, `gs_host=$PUBLIC_HOST`, a
+narrowed `38000-38020` port pool), points the env discovery location and every
+discovery `external` address at `$PUBLIC_HOST`, and finishes by verifying
+env→discovery. On a real host, open the firewall it prints: **TCP 9500-9518**
+and **TCP+UDP 38000-38020** (kryonet needs UDP).
+
+The individual scripts (`provision.sh`, `seed-economy.sh`,
+`build-deployment.sh`, `controller.Dockerfile`) are still usable on their own;
+the sections below explain the pieces `deploy.sh` orchestrates.
+
 ## How spawning works (what we reverse-engineered)
 
 The controller (`anthill-game-controller`) runs a spawned server as a child
